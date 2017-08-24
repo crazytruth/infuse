@@ -12,4 +12,4 @@ __all__ = ("CircuitBreaker", "AioCircuitBreaker",
            "STATE_CLOSED", "STATE_OPEN", "STATE_HALF_OPEN")
 
 
-__version__ = "0.0.1"
+__version__ = '0.0.2'
