@@ -9,7 +9,7 @@ def readme():
 setup(
     name='infuse',
     version=infuse.__version__,
-    description='circuit breaker implementation for async storage',
+    description='async circuit breaker implementation for async storages',
     long_description=readme(),
     classifiers=[
     'Development Status :: 3 - Alpha',
