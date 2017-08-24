@@ -61,8 +61,8 @@ version::
     $ python setup.py install
 
 
-What Does a Circuit Breaker Do?
-```````````````````````````````
+What Does a Circuit Breaker Do?(taken from `pybreaker`_)
+````````````````````````````````````````````````````````
 
 Let's say you want to use a circuit breaker on a function that updates a row
 in the ``customer`` database table::
@@ -88,8 +88,8 @@ After 60 seconds, the circuit breaker will allow the next call to
 if it fails, however, the circuit is opened again until another timeout elapses.
 
 
-Excluding Exceptions
-````````````````````
+Excluding Exceptions(taken from `pybreaker`_)
+`````````````````````````````````````````````
 
 By default, a failed call is any call that raises an exception. However, it's
 common to raise exceptions to also indicate business exceptions, and those
@@ -108,8 +108,8 @@ In that case, when any function guarded by that circuit breaker raises
 ``CustomerValidationError``), that call won't be considered a system failure.
 
 
-Monitoring and Management
-`````````````````````````
+Monitoring and Management(taken from `pybreaker`_)
+``````````````````````````````````````````````````
 
 A circuit breaker provides properties and functions you can use to monitor and
 change its current state::
@@ -137,9 +137,6 @@ change its current state::
     # Opens the circuit
     await db_breaker.open()
 
-
-These properties and functions might and should be exposed to the operations
-staff somehow as they help them to detect problems in the system.
 
 
 .. _Python: http://python.org
