@@ -20,7 +20,7 @@ setup(
     url='https://github.com/MyMusicTaste/infuse',
     author='crazytruth',
     author_email='kwangjinkim@gmail.com',
-    license='MIT',
+    license='BSD',
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
     include_package_data=True,
     zip_safe=False,
