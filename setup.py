@@ -1,14 +1,22 @@
 from setuptools import setup, find_packages
 
-import infuse
+version = "0.0.2.dev0"
 
 def readme():
     with open('README.rst') as f:
         return f.read()
 
+
+def pytest_command():
+    from commands.pytest import PyTestCommand
+    return PyTestCommand
+
+
+test_requires = ['pytest', 'mock', 'fakeredis', 'pytest-asyncio']
+
 setup(
     name='infuse',
-    version=infuse.__version__,
+    version=version,
     description='async circuit breaker implementation for async storages',
     long_description=readme(),
     classifiers=[
@@ -22,8 +30,16 @@ setup(
     author_email='kwangjinkim@gmail.com',
     license='BSD',
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
+    setup_requires=["zest.releaser[recommended]", "setuptools"],
+    install_requires=["aioredis>=1.1.0"],
     include_package_data=True,
     zip_safe=False,
+    tests_require=test_requires,
     test_suite='tests',
-    tests_require=['mock', 'fakeredis',],
+    extras_require={
+        "testing": test_requires,
+        "dev": ["zest.releaser[recommended]", "flake8"]
+    },
+    cmdclass={'test': pytest_command()},
+    dependency_links=['/Users/david/Projects/infuse']
 )
