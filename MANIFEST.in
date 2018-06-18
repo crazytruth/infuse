@@ -1,6 +1,7 @@
-recursive-include main_directory *
-recursive-include docs *
-include *
+include *.py
+include LICENSE
+include README.md
+include CHANGELOG.md
 global-exclude *.pyc
 exclude tests
 recursive-exclude tests *.py
