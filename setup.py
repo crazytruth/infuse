@@ -47,6 +47,5 @@ setup(
         "testing": test_requires,
         "dev": ["zest.releaser[recommended]", "flake8"]
     },
-    cmdclass={'test': pytest_command()},
-    dependency_links=['/Users/david/Projects/infuse']
+    cmdclass={'test': pytest_command()}
 )
