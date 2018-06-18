@@ -2,3 +2,5 @@ recursive-include main_directory *
 recursive-include docs *
 include *
 global-exclude *.pyc
+exclude tests
+recursive-exclude tests *.py
