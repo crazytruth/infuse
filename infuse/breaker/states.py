@@ -61,7 +61,7 @@ class _AioCircuitBreakerState(object):
         for listener in self._breaker.listeners:
             listener.success(self._breaker)
 
-    async def call_async(self, func, *args, **kwargs):
+    async def call(self, func, *args, **kwargs):
         """
         Calls async `func` with the given `args` and `kwargs`, and updates the
         circuit breaker state according to the result.
@@ -75,7 +75,9 @@ class _AioCircuitBreakerState(object):
             listener.before_call(self._breaker, func, *args, **kwargs)
 
         try:
-            ret = await func(*args, **kwargs)
+            ret = func(*args, **kwargs)
+            if isawaitable(ret):
+                ret = await ret
         except BaseException as e:
             await self._handle_error(e)
         else:
@@ -187,15 +189,15 @@ class AioCircuitOpenState(_AioCircuitBreakerState):
             raise CircuitBreakerError(error_msg)
         else:
             await self._breaker.half_open()
-            return self._breaker.call(func, *args, **kwargs)
+            return await self._breaker.call(func, *args, **kwargs)
 
-    def call(self, func, *args, **kwargs):
+    async def call(self, func, *args, **kwargs):
         """
         Delegate the call to before_call, if the time out is not elapsed it will throw an exception, otherwise we get
         the results from the call performed after the state is switch to half-open
         """
 
-        return self.before_call(func, *args, **kwargs)
+        return await self.before_call(func, *args, **kwargs)
 
 
 class AioCircuitHalfOpenState(_AioCircuitBreakerState):

@@ -12,7 +12,14 @@ def pytest_command():
     return PyTestCommand
 
 
-test_requires = ['pytest', 'mock', 'fakeredis', 'pytest-asyncio']
+test_requires = ['pytest',
+                 'mock',
+                 # 'fakeredis',
+                 'pytest-asyncio',
+                 'pytest-redis',
+                 'pytest-cov',
+                 'pytest-sugar',
+                 'pytest-sanic']
 
 setup(
     name='infuse',

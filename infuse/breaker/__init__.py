@@ -5,11 +5,12 @@ For more information on this and other patterns and best practices, buy the
 book at http://pragprog.com/titles/mnee/release-it
 """
 
+import inspect
 from functools import wraps
 import threading
 
 from infuse.breaker.constants import STATE_CLOSED, STATE_HALF_OPEN, STATE_OPEN
-from infuse.breaker.storages import CircuitMemoryStorage
+from infuse.breaker.storages import CircuitMemoryStorage, CircuitAioRedisStorage
 from infuse.breaker.states import AioCircuitClosedState, AioCircuitHalfOpenState, AioCircuitOpenState
 
 __all__ = ("AioCircuitBreaker",)
@@ -25,15 +26,13 @@ class AioCircuitBreaker(object):
     """
 
     def __init__(self, fail_max=5, reset_timeout=60, exclude=None,
-                 listeners=None, state_storage=None):
+                 listeners=None, state_storage=None, name=None):
         """
         Creates a new circuit breaker with the given parameters.
         """
+
         self._lock = threading.RLock()
-        if not state_storage:
-            self._state_storage = CircuitMemoryStorage(STATE_CLOSED)
-        else:
-            self._state_storage = state_storage
+        self._state_storage = state_storage or CircuitMemoryStorage(STATE_CLOSED)
 
         # self._state = AioCircuitClosedState(self)
 
@@ -42,20 +41,24 @@ class AioCircuitBreaker(object):
 
         self._excluded_exceptions = list(exclude or [])
         self._listeners = list(listeners or [])
+        self._name = name
 
     @classmethod
     async def initialize(cls, fail_max=5, reset_timeout=60, exclude=None,
-                         listeners=None, state_storage=None):
-        self = cls(fail_max, reset_timeout, exclude, listeners, state_storage)
-        self._state = await AioCircuitClosedState.initialize(self)
+                         listeners=None, state_storage=None, name=None):
+        self = cls(fail_max=fail_max, reset_timeout=reset_timeout,
+                   exclude=exclude, listeners=listeners,
+                   state_storage=state_storage, name=name)
+        # self._state = await AioCircuitClosedState.initialize(self)
+        self._state = await self._create_new_state(await self.current_state)
         return self
 
     @property
-    def fail_counter(self):
+    async def fail_counter(self):
         """
         Returns the current number of consecutive failures.
         """
-        return self._state_storage.counter
+        return await self._state_storage.counter
 
     @property
     def fail_max(self):
@@ -89,21 +92,36 @@ class AioCircuitBreaker(object):
         """
         self._reset_timeout = timeout
 
+    async def _create_new_state(self, new_state, prev_state=None, notify=False):
+        """
+        Return state object from state string, i.e.,
+        'closed' -> <CircuitClosedState>
+        """
+        state_map = {
+            STATE_CLOSED: AioCircuitClosedState,
+            STATE_OPEN: AioCircuitOpenState,
+            STATE_HALF_OPEN: AioCircuitHalfOpenState,
+        }
+        try:
+            cls = state_map[new_state]
+            return await cls.initialize(self, prev_state=prev_state, notify=notify)
+        except KeyError:
+            msg = "Unknown state {!r}, valid states: {}"
+            raise ValueError(msg.format(new_state, ', '.join(state_map)))
+
     @property
     async def state(self):
         """
         Returns the current state of this circuit breaker.
         """
-        with self._lock:
-            name = await self._state_storage.state
-            if name != self._state.name:
-                if name == STATE_CLOSED:
-                    self._state = await AioCircuitClosedState.initialize(self, self._state, notify=True)
-                elif name == STATE_OPEN:
-                    self._state = await AioCircuitOpenState.initialize(self, self._state, notify=True)
-                else:
-                    self._state = await AioCircuitHalfOpenState.initialize(self, self._state, notify=True)
+        name = await self.current_state
+        if name != self._state.name:
+            await self.set_state(name)
         return self._state
+
+    async def set_state(self, state_str):
+        with self._lock:
+            self._state = await self._create_new_state(state_str, prev_state=self._state, notify=True)
 
     @property
     async def current_state(self):
@@ -111,7 +129,10 @@ class AioCircuitBreaker(object):
         Returns a string that identifies this circuit breaker's state, i.e.,
         'closed', 'open', 'half-open'.
         """
-        return await self._state_storage.state
+        s = self._state_storage.state
+        if inspect.isawaitable(s):
+            s = await s
+        return s
 
     @property
     def excluded_exceptions(self):
@@ -166,9 +187,10 @@ class AioCircuitBreaker(object):
         implemented by the current state of this circuit breaker.
         Return a closure to prevent import errors when using without tornado present
         """
+
         with self._lock:
             state = await self.state
-            ret = await state.call_async(func, *args, **kwargs)
+            ret = await state.call(func, *args, **kwargs)
             return ret
 
     async def open(self):
@@ -208,8 +230,9 @@ class AioCircuitBreaker(object):
 
         def _outer_wrapper(func):
             @wraps(func)
-            def _inner_wrapper(*args, **kwargs):
-                return self.call(func, *args, **kwargs)
+            async def _inner_wrapper(*args, **kwargs):
+                ret = await self.call(func, *args, **kwargs)
+                return ret
 
             return _inner_wrapper
 
@@ -244,3 +267,17 @@ class AioCircuitBreaker(object):
         """
         with self._lock:
             self._listeners.remove(listener)
+
+    @property
+    def name(self):
+        """
+        Returns the name of this circuit breaker. Useful for logging.
+        """
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        """
+        Set the name of this circuit breaker.
+        """
+        self._name = name

@@ -1,4 +1,5 @@
 from insanic.connections import get_connection
+from insanic.log import logger
 
 from infuse.breaker import AioCircuitBreaker
 from infuse.breaker.constants import STATE_HALF_OPEN, STATE_CLOSED, STATE_OPEN
@@ -29,19 +30,24 @@ class Infuse:
             redis = await get_connection('infuse')
             conn = await redis
 
-            circuit_breaker_storage = CircuitAioRedisStorage(STATE_HALF_OPEN, conn, app.config.SERVICE_NAME)
-            breaker = await AioCircuitBreaker.initialize(fail_max=app.config.INFUSE_MAX_FAILURE,
-                                                         reset_timeout=app.config.INFUSE_RESET_TIMEOUT,
-                                                         state_storage=circuit_breaker_storage,
-                                                         listeners=[])
+            circuit_breaker_storage = await CircuitAioRedisStorage.initialize(app.config.INFUSE_INITIAL_STATE,
+                                                                              conn, app.config.SERVICE_NAME)
+            app.breaker = await AioCircuitBreaker.initialize(fail_max=app.config.INFUSE_MAX_FAILURE,
+                                                             reset_timeout=app.config.INFUSE_RESET_TIMEOUT,
+                                                             state_storage=circuit_breaker_storage,
+                                                             listeners=[])
 
-            current_state = await breaker.current_state
+            current_state = await app.breaker.current_state
 
             # if open, try half open state to allow connections.
             # if half-open, pass
             # if closed, pass
             if current_state == STATE_OPEN:
-                await breaker.half_open()
+                await app.breaker.half_open()
+                logger.debug("[INFUSE] State Converted to half open.")
+            else:
+                logger.debug(f"[INFUSE] State is {current_state}.")
+
 
     @classmethod
     def init_app(cls, app):

@@ -1,3 +1,5 @@
+from infuse.breaker.constants import STATE_HALF_OPEN
+
 INFUSE_CACHE = {
     "infuse": {
         "ENGINE": "aioredis",
@@ -9,3 +11,5 @@ INFUSE_CACHE = {
 
 INFUSE_RESET_TIMEOUT = 15
 INFUSE_MAX_FAILURE = 5
+
+INFUSE_INITIAL_STATE = STATE_HALF_OPEN

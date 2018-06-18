@@ -92,47 +92,45 @@ class CircuitMemoryStorage(CircuitBreakerStorage):
         self._state = state
 
     @property
-    def state(self):
+    async def state(self):
         """
         Returns the current circuit breaker state.
         """
         return self._state
 
-    @state.setter
-    def state(self, state):
+    async def set_state(self, state):
         """
         Set the current circuit breaker state to `state`.
         """
         self._state = state
 
-    def increment_counter(self):
+    async def increment_counter(self):
         """
         Increases the failure counter by one.
         """
         self._fail_counter += 1
 
-    def reset_counter(self):
+    async def reset_counter(self):
         """
         Sets the failure counter to zero.
         """
         self._fail_counter = 0
 
     @property
-    def counter(self):
+    async def counter(self):
         """
         Returns the current value of the failure counter.
         """
         return self._fail_counter
 
     @property
-    def opened_at(self):
+    async def opened_at(self):
         """
         Returns the most recent value of when the circuit was opened.
         """
         return self._opened_at
 
-    @opened_at.setter
-    def opened_at(self, dt):
+    async def set_opened_at(self, dt):
         """
         Sets the most recent value of when the circuit was opened to
         `datetime`.
@@ -297,7 +295,7 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
             self.RedisError = __import__('aioredis').errors.RedisError
         except ImportError:
             # Module does not exist, so this feature is not available
-            raise ImportError("CircuitRedisStorage can only be used if 'aioredis' is available")
+            raise ImportError("CircuitAioRedisStorage can only be used if 'aioredis' is available")
 
         self._redis = redis_object
         self._namespace_name = namespace
