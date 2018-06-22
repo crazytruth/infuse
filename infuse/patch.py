@@ -58,7 +58,7 @@ class RequestBreaker:
                 error_logger.critical(f"[INFUSE] [{self.namespace(instance.service_name)}] {e.args[0]}")
                 msg = settings.SERVICE_UNAVAILABLE_MESSAGE.format(instance.service_name)
 
-                exc = exceptions.ServiceUnavailable503Error(detail=msg,
+                exc = exceptions.ServiceUnavailable503Error(description=msg,
                                                             error_code=InfuseErrorCodes.service_unavailable,
                                                             status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
                 raise exc
