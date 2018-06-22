@@ -1,7 +1,7 @@
 Changelog for infuse
 =====================
 
-0.1.1 (unreleased)
+0.1.1 (2018-06-22)
 ------------------
 
 - Fix insanic exception keyword(detail-> description)
