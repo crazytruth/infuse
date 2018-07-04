@@ -115,7 +115,8 @@ class AioCircuitBreaker(object):
         Returns the current state of this circuit breaker.
         """
         name = await self.current_state
-        if name != self._state.name:
+        if name != self._state.name or name is None:
+            name = STATE_HALF_OPEN if name is None else name
             await self.set_state(name)
         return self._state
 

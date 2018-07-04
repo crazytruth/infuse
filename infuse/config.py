@@ -1,5 +1,7 @@
 from infuse.breaker.constants import STATE_HALF_OPEN
 
+INFUSE_ENABLED = True
+
 INFUSE_CACHE = {
     "infuse": {
         "ENGINE": "aioredis",
