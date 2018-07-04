@@ -1,7 +1,7 @@
 Changelog for infuse
 =====================
 
-0.1.2 (unreleased)
+0.1.2 (2018-07-04)
 ------------------
 
 - FIX: set to half open in when cached is flushed
