@@ -4,6 +4,7 @@ Changelog for infuse
 0.1.3 (unreleased)
 ------------------
 
+- CRITICAL: fixes critical issue where namespace was set to first request
 - FIX: fixes critical issue with different namespaces for server and interservice redis keys 
 
 

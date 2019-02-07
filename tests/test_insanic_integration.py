@@ -2,10 +2,13 @@ import pytest
 
 from infuse import Infuse
 from infuse.breaker.constants import STATE_OPEN, STATE_HALF_OPEN, STATE_CLOSED
+from infuse.patch import request_breaker
+
 from insanic import Insanic
 from insanic.conf import settings
+from insanic.loading import get_service
 
-settings.configure(MMT_ENV='test')
+settings.configure(MMT_ENV='test', SERVICE_CONNECTIONS=['test1', 'test2'])
 
 
 class TestInsanicIntegration:
@@ -15,10 +18,12 @@ class TestInsanicIntegration:
         monkeypatch.setattr(settings, "REDIS_HOST", redis_proc.host)
         monkeypatch.setattr(settings, "REDIS_PORT", redis_proc.port)
 
-        app = Insanic('test')
+        app = Insanic('userip')
         Infuse.init_app(app)
 
-        return app
+        yield app
+
+
 
     @pytest.fixture
     def test_cli(self, loop, insanic, test_client):
@@ -70,3 +75,21 @@ class TestInsanicIntegration:
     async def test_initial_state_half_open(self, breaker_initial_half_open, insanic, redisdb):
         current_state = await insanic.breaker.current_state
         assert current_state == STATE_HALF_OPEN
+
+    async def test_redis_keys_for_server_start_and_interservice(self, breaker_initial_closed, insanic, redisdb):
+        current_state = await insanic.breaker.current_state
+        assert current_state == STATE_CLOSED
+
+        service = get_service('userip')
+
+        assert request_breaker.namespace('userip') in insanic.breaker._state_storage._namespace("state")
+
+    async def test_redis_keys_for_each_service(self, insanic, redisdb):
+        service_test_one = get_service('test1')
+        service_test_two = get_service('test2')
+
+        test1_breaker = await request_breaker.breaker(service_test_one)
+        test2_breaker = await request_breaker.breaker(service_test_two)
+
+        assert test1_breaker._state_storage._namespace('state') == 'infuse:test:test1:state'
+        assert test2_breaker._state_storage._namespace('state') == 'infuse:test:test2:state'

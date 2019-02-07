@@ -24,20 +24,29 @@ def patch():
 class RequestBreaker:
 
     def __init__(self):
-        self._breaker = None
+        self.storage = {}
+        self._breaker = {}
+        self._conn = None
 
     async def breaker(self, target_service):
-        if self._breaker is None:
-            conn = await get_connection('infuse')
-            circuit_breaker_storage = await CircuitAioRedisStorage. \
-                initialize(STATE_CLOSED, conn,
-                           namespace=f"{self.namespace(target_service.service_name)}")
-            # await circuit_breaker_storage.init_storage(STATE_CLOSED)
-            self._breaker = await AioCircuitBreaker.initialize(fail_max=settings.INFUSE_MAX_FAILURE,
-                                                               reset_timeout=settings.INFUSE_RESET_TIMEOUT,
-                                                               state_storage=circuit_breaker_storage,
-                                                               listeners=[])
-        return self._breaker
+        if self._conn is None:
+            self._conn = await get_connection('infuse')
+
+        service_name = target_service.service_name
+        if service_name not in self.storage:
+            self.storage[service_name] = await CircuitAioRedisStorage.initialize(
+                state=STATE_CLOSED, redis_object=self._conn,
+                namespace=f"{self.namespace(target_service.service_name)}")
+        # await circuit_breaker_storage.init_storage(STATE_CLOSED)
+
+        if service_name not in self._breaker:
+            self._breaker[service_name] = await AioCircuitBreaker.initialize(
+                fail_max=settings.INFUSE_MAX_FAILURE,
+                reset_timeout=settings.INFUSE_RESET_TIMEOUT,
+                state_storage=self.storage[service_name],
+                listeners=[])
+
+        return self._breaker[service_name]
 
     @staticmethod
     def namespace(service_name):
