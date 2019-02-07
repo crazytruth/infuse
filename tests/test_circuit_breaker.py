@@ -838,7 +838,7 @@ class TestCircuitBreakerThreads():
         def err(): raise Exception()
 
         async def trigger_error():
-            for i in range(2000):
+            for _ in range(2000):
                 try:
                     await err()
                 except: pass

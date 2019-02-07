@@ -4,7 +4,7 @@ Changelog for infuse
 0.1.3 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- FIX: fixes critical issue with different namespaces for server and interservice redis keys 
 
 
 0.1.2 (2018-07-04)

@@ -30,8 +30,13 @@ class Infuse:
             redis = await get_connection('infuse')
             conn = await redis
 
-            circuit_breaker_storage = await CircuitAioRedisStorage.initialize(app.config.INFUSE_INITIAL_STATE,
-                                                                              conn, app.config.SERVICE_NAME)
+            namespace = app.config.INFUSE_REDIS_KEY_NAMESPACE_TEMPLATE.format(env=app.config.MMT_ENV,
+                                                                              service_name=app.config.SERVICE_NAME)
+
+            circuit_breaker_storage = await CircuitAioRedisStorage \
+                .initialize(state=app.config.INFUSE_INITIAL_STATE,
+                            redis_object=conn,
+                            namespace=namespace)
             app.breaker = await AioCircuitBreaker.initialize(fail_max=app.config.INFUSE_MAX_FAILURE,
                                                              reset_timeout=app.config.INFUSE_RESET_TIMEOUT,
                                                              state_storage=circuit_breaker_storage,
