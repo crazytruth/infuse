@@ -1,7 +1,7 @@
 Changelog for infuse
 =====================
 
-0.1.3 (unreleased)
+0.2.0 (2019-02-07)
 ------------------
 
 - CRITICAL: fixes critical issue where namespace was set to first request
