@@ -38,7 +38,10 @@ setup(
     license='BSD',
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
     setup_requires=["zest.releaser[recommended]", "setuptools"],
-    install_requires=["aioredis>=1.1.0"],
+    install_requires=[
+        "aioredis>=1.1.0",
+        "insanic>=0.8.0"
+    ],
     include_package_data=True,
     zip_safe=False,
     tests_require=test_requires,

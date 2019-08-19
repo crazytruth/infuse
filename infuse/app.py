@@ -2,9 +2,7 @@ from insanic.connections import get_connection
 from insanic.log import logger
 
 from infuse.breaker import AioCircuitBreaker
-from infuse.breaker.constants import STATE_HALF_OPEN, STATE_CLOSED, STATE_OPEN
-from infuse.breaker.exceptions import CircuitBreakerError
-from infuse.breaker.listeners import CircuitBreakerListener
+from infuse.breaker.constants import STATE_OPEN
 from infuse.breaker.storages import CircuitAioRedisStorage
 from infuse.patch import patch
 
@@ -53,10 +51,9 @@ class Infuse:
             else:
                 logger.debug(f"[INFUSE] State is {current_state}.")
 
-
     @classmethod
     def init_app(cls, app):
-
         cls.load_config(app)
         cls.attach_listeners(app)
         patch()
+        app.plugin_initialized('infuse', cls)

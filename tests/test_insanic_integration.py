@@ -47,7 +47,7 @@ class TestInsanicIntegration:
                     assert hasattr(settings, k)
                     conf = getattr(config, k)
                     from_settings = getattr(settings, k)
-                    assert conf == from_settings
+                    assert conf == from_settings, f"{k}"
 
     @pytest.fixture
     def breaker_initial_open(self, loop, insanic, test_client, monkeypatch):
