@@ -1,7 +1,7 @@
 Changelog for infuse
 =====================
 
-0.2.1 (unreleased)
+0.3.0 (2019-08-20)
 ------------------
 
 - UPDATE: updates insanic requirement to 0.8.0 or higher for plugin resquirement settings
