@@ -4,7 +4,7 @@ Changelog for infuse
 0.3.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- FIX: setting state to half-open was not working because `setnx`. Now just `set`
 
 
 0.3.0 (2019-08-20)

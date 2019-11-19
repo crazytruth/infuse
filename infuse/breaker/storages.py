@@ -304,8 +304,10 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
     @classmethod
     async def initialize(cls, state, redis_object, namespace=None, fallback_circuit_state=STATE_CLOSED):
         self = cls(state, redis_object, namespace, fallback_circuit_state)
-        await self._redis.setnx(self._namespace('fail_counter'), 0)
-        await self._redis.setnx(self._namespace('state'), str(state))
+        resp = await self._redis.set(self._namespace('fail_counter'), 0)
+        assert resp is True
+        resp = await self._redis.set(self._namespace('state'), str(state))
+        assert resp is True
         return self
 
     @property
