@@ -3,7 +3,6 @@ import wrapt
 from insanic import exceptions, status
 from insanic.conf import settings
 from insanic.connections import get_connection
-from insanic.errors import GlobalErrorCodes
 from insanic.log import error_logger
 
 from infuse.breaker import AioCircuitBreaker
@@ -14,11 +13,18 @@ from infuse.errors import InfuseErrorCodes
 
 
 def patch():
-    wrapt.wrap_function_wrapper(
-        'insanic.services',
-        'Service._dispatch_fetch',
-        request_breaker.wrapped_request
-    )
+    try:
+        wrapt.wrap_function_wrapper(
+            'insanic.services',
+            'Service._dispatch_fetch',
+            request_breaker.wrapped_request
+        )
+    except AttributeError:
+        wrapt.wrap_function_wrapper(
+            'insanic.services',
+            'Service._dispatch_future_fetch',
+            request_breaker.wrapped_request
+        )
 
 
 class RequestBreaker:
