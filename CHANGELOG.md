@@ -7,6 +7,7 @@ Changelog for infuse
 - FIX: setting state to half-open was not working because `setnx`. Now just `set`
 - FIX: includes wrapt in setup requirements
 - UPDATE: support for new future returning http_dispatch
+- UPDATE: default initial state to "closed"
 
 
 0.3.0 (2019-08-20)
