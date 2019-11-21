@@ -1,5 +1,3 @@
-import asyncio
-import types
 from datetime import datetime, timedelta
 
 from inspect import isawaitable
@@ -83,17 +81,6 @@ class _AioCircuitBreakerState(object):
         else:
             await self._handle_success()
         return ret
-
-    def generator_call(self, wrapped_generator):
-        try:
-            value = yield next(wrapped_generator)
-            while True:
-                value = yield wrapped_generator.send(value)
-        except StopIteration:
-            self._handle_success()
-            raise
-        except BaseException as e:
-            self._handle_error(e)
 
     async def before_call(self, func, *args, **kwargs):
         """

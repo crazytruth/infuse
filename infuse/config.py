@@ -1,4 +1,4 @@
-from infuse.breaker.constants import STATE_HALF_OPEN
+from infuse.breaker.constants import STATE_CLOSED
 
 INFUSE_ENABLED = True
 
@@ -14,5 +14,5 @@ INFUSE_CACHE = {
 INFUSE_RESET_TIMEOUT = 15
 INFUSE_MAX_FAILURE = 5
 
-INFUSE_INITIAL_STATE = STATE_HALF_OPEN
+INFUSE_INITIAL_STATE = STATE_CLOSED
 INFUSE_REDIS_KEY_NAMESPACE_TEMPLATE = "{env}:{service_name}"

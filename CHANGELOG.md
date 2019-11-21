@@ -4,7 +4,14 @@ Changelog for infuse
 0.3.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- FIX: setting state to half-open was not working because `setnx`. Now just `set`
+- FIX: includes wrapt in setup requirements
+- FIX: unwatching of keys when finished
+- FIX: only reset counter if counter is not 0
+- FIX: silences watch errors
+- UPDATE: support for new future returning http_dispatch
+- UPDATE: default initial state to "closed"
+- CHORE: removes unused `generator_call` (may be BREAKING)
 
 
 0.3.0 (2019-08-20)

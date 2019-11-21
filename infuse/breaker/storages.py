@@ -1,8 +1,8 @@
-import asyncio
 import time
 import calendar
-import logging
 from datetime import datetime
+
+from insanic.log import error_logger
 
 from infuse.breaker.constants import STATE_CLOSED
 
@@ -277,7 +277,7 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
 
     BASE_NAMESPACE = 'infuse'
 
-    logger = logging.getLogger(__name__)
+    logger = error_logger
 
     def __init__(self, state, redis_object, namespace=None, fallback_circuit_state=STATE_CLOSED):
         """
@@ -293,6 +293,7 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
 
         try:
             self.RedisError = __import__('aioredis').errors.RedisError
+            self.WatchVariableError = __import__('aioredis').errors.WatchVariableError
         except ImportError:
             # Module does not exist, so this feature is not available
             raise ImportError("CircuitAioRedisStorage can only be used if 'aioredis' is available")
@@ -304,8 +305,10 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
     @classmethod
     async def initialize(cls, state, redis_object, namespace=None, fallback_circuit_state=STATE_CLOSED):
         self = cls(state, redis_object, namespace, fallback_circuit_state)
-        await self._redis.setnx(self._namespace('fail_counter'), 0)
-        await self._redis.setnx(self._namespace('state'), str(state))
+        resp = await self._redis.set(self._namespace('fail_counter'), 0)
+        assert resp is True
+        resp = await self._redis.set(self._namespace('state'), str(state))
+        assert resp is True
         return self
 
     @property
@@ -326,7 +329,7 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
         try:
             await self._redis.set(self._namespace('state'), str(state))
         except self.RedisError:
-            self.logger.error('RedisError', exc_info=True)
+            self.logger.error('RedisError: set_state', exc_info=True)
             pass
 
     async def increment_counter(self):
@@ -336,18 +339,21 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
         try:
             await self._redis.incr(self._namespace('fail_counter'))
         except self.RedisError:
-            self.logger.error('RedisError', exc_info=True)
+            self.logger.error('RedisError: increment_counter', exc_info=True)
             pass
 
     async def reset_counter(self):
         """
         Sets the failure counter to zero.
         """
-        try:
-            await self._redis.set(self._namespace('fail_counter'), 0)
-        except self.RedisError:
-            self.logger.error('RedisError', exc_info=True)
-            pass
+        current_counter = await self.counter
+
+        if current_counter > 0:
+            try:
+                await self._redis.set(self._namespace('fail_counter'), 0)
+            except self.RedisError:
+                self.logger.error('RedisError: reset_counter', exc_info=True)
+                pass
 
     @property
     async def counter(self):
@@ -375,7 +381,7 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
             if timestamp:
                 return datetime(*time.gmtime(int(timestamp))[:6])
         except self.RedisError:
-            self.logger.error('RedisError', exc_info=True)
+            self.logger.error('RedisError: opened_at', exc_info=True)
             return None
 
     # @opened_at.setter
@@ -402,8 +408,13 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
                 tr.set(key, next_value)
 
             await tr.execute()
+        except self.WatchVariableError:
+            pass
         except self.RedisError:
-            self.logger.error('RedisError', exc_info=True)
+            self.logger.error('RedisError: set_opened_at', exc_info=True)
+        finally:
+            await self._redis.unwatch()
+
             # pass
 
     def _namespace(self, key):
