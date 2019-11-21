@@ -8,6 +8,7 @@ Changelog for infuse
 - FIX: includes wrapt in setup requirements
 - UPDATE: support for new future returning http_dispatch
 - UPDATE: default initial state to "closed"
+- CHORE: removes unused `generator_call` (may be BREAKING)
 
 
 0.3.0 (2019-08-20)

@@ -82,17 +82,6 @@ class _AioCircuitBreakerState(object):
             await self._handle_success()
         return ret
 
-    def generator_call(self, wrapped_generator):
-        try:
-            value = yield next(wrapped_generator)
-            while True:
-                value = yield wrapped_generator.send(value)
-        except StopIteration:
-            self._handle_success()
-            raise
-        except BaseException as e:
-            self._handle_error(e)
-
     async def before_call(self, func, *args, **kwargs):
         """
         Override this method to be notified before a call to the guarded
