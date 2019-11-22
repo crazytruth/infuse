@@ -4,7 +4,7 @@ Changelog for infuse
 0.3.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- FIX: lower insanic requirements to 0.7.15
 
 
 0.3.1 (2019-11-21)

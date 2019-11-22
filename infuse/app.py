@@ -56,4 +56,6 @@ class Infuse:
         cls.load_config(app)
         cls.attach_listeners(app)
         patch()
-        app.plugin_initialized('infuse', cls)
+
+        if hasattr(app, "plugin_initialized"):
+            app.plugin_initialized('infuse', cls)

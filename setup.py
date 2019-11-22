@@ -40,7 +40,7 @@ setup(
     setup_requires=["zest.releaser[recommended]", "setuptools"],
     install_requires=[
         "aioredis>=1.1.0",
-        "insanic>=0.8.0",
+        "insanic>=0.7.15",
         "wrapt"
     ],
     include_package_data=True,
