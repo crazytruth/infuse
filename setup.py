@@ -53,4 +53,3 @@ setup(
     },
     cmdclass={'test': pytest_command()}
 )
-
