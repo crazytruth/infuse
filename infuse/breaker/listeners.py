@@ -31,4 +31,3 @@ class CircuitBreakerListener(object):
         `cb` state changes.
         """
         pass
-

@@ -1,55 +1,46 @@
+import os
+import re
+
 from setuptools import setup, find_packages
 
-version = '0.3.3.dev0'
-
-def readme():
-    with open('README.rst') as f:
-        return f.read()
+here = os.path.dirname(__file__)
 
 
-def pytest_command():
-    from commands.pytest import PyTestCommand
-    return PyTestCommand
+def read(fname):
+    """
+    Read given file's content.
+    :param str fname: file name
+    :returns: file contents
+    :rtype: str
+    """
+    return open(os.path.join(here, fname)).read()
 
 
-test_requires = ['pytest',
-                 'mock',
-                 # 'fakeredis',
-                 'pytest-asyncio',
-                 'pytest-redis',
-                 'pytest-cov',
-                 'pytest-sugar',
-                 'pytest-sanic']
+def get_meta(meta):
+    search_string = f'__{meta}__ = "(.*?)"'
+
+    with open("infuse/__init__.py", encoding="utf8") as f:
+        return re.search(search_string, f.read()).group(1)
+
 
 setup(
-    name='infuse',
-    version=version,
-    description='async circuit breaker implementation for async storages',
-    long_description=readme(),
+    name="insanic-infuse",
+    version=get_meta("version"),
+    author=get_meta("author"),
+    author_email=get_meta("email"),
+    description="Async circuit breaker implementation for Insanic",
+    long_description=read("README.rst"),
     classifiers=[
-    'Development Status :: 3 - Alpha',
-    'License :: OSI Approved :: MIT License',
-    'Programming Language :: Python :: 3.6',
+        "Development Status :: 3 - Alpha",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ],
-    keywords='circuit breaker async asyncio ',
-    url='https://github.com/MyMusicTaste/infuse',
-    author='crazytruth',
-    author_email='kwangjinkim@gmail.com',
-    license='BSD',
-    packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
-    setup_requires=["zest.releaser[recommended]", "setuptools"],
-    install_requires=[
-        "aioredis>=1.1.0",
-        "insanic>=0.7.15",
-        "wrapt"
-    ],
-    include_package_data=True,
+    keywords="circuit breaker async asyncio microservice",
+    url="https://github.com/crazytruth/infuse",
+    license="MIT",
+    packages=find_packages(exclude=["contrib", "docs", "tests*"]),
+    install_requires=["insanic>=0.9.0,<0.10", "wrapt"],
     zip_safe=False,
-    tests_require=test_requires,
-    test_suite='tests',
-    extras_require={
-        "testing": test_requires,
-        "dev": ["zest.releaser[recommended]", "flake8"]
-    },
-    cmdclass={'test': pytest_command()}
 )

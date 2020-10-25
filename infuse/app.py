@@ -8,7 +8,6 @@ from infuse.patch import patch
 
 
 class Infuse:
-
     @classmethod
     def load_config(cls, app):
         from . import config
@@ -23,22 +22,28 @@ class Infuse:
 
     @classmethod
     def attach_listeners(cls, app):
-        @app.listener('after_server_start')
-        async def after_server_start_half_open_circuit(app, loop=None, **kwargs):
-            redis = await get_connection('infuse')
+        @app.listener("after_server_start")
+        async def after_server_start_half_open_circuit(
+            app, loop=None, **kwargs
+        ):
+            redis = await get_connection("infuse")
             conn = await redis
 
-            namespace = app.config.INFUSE_REDIS_KEY_NAMESPACE_TEMPLATE.format(env=app.config.MMT_ENV,
-                                                                              service_name=app.config.SERVICE_NAME)
+            namespace = app.config.INFUSE_REDIS_KEY_NAMESPACE_TEMPLATE.format(
+                env=app.config.ENVIRONMENT, service_name=app.config.SERVICE_NAME
+            )
 
-            circuit_breaker_storage = await CircuitAioRedisStorage \
-                .initialize(state=app.config.INFUSE_INITIAL_STATE,
-                            redis_object=conn,
-                            namespace=namespace)
-            app.breaker = await AioCircuitBreaker.initialize(fail_max=app.config.INFUSE_MAX_FAILURE,
-                                                             reset_timeout=app.config.INFUSE_RESET_TIMEOUT,
-                                                             state_storage=circuit_breaker_storage,
-                                                             listeners=[])
+            circuit_breaker_storage = await CircuitAioRedisStorage.initialize(
+                state=app.config.INFUSE_INITIAL_STATE,
+                redis_object=conn,
+                namespace=namespace,
+            )
+            app.breaker = await AioCircuitBreaker.initialize(
+                fail_max=app.config.INFUSE_MAX_FAILURE,
+                reset_timeout=app.config.INFUSE_RESET_TIMEOUT,
+                state_storage=circuit_breaker_storage,
+                listeners=[],
+            )
 
             current_state = await app.breaker.current_state
 
@@ -58,4 +63,4 @@ class Infuse:
         patch()
 
         if hasattr(app, "plugin_initialized"):
-            app.plugin_initialized('infuse', cls)
+            app.plugin_initialized("infuse", cls)

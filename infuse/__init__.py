@@ -1,7 +1,7 @@
-import pkg_resources
-
-__version__ = pkg_resources.get_distribution('infuse').version
+__version__ = "0.3.3.dev0"
+__author__ = "Kwang Jin Kim"
+__email__ = "kwangjinkim@gmail.com"
 
 from infuse.app import Infuse
 
-__all__ = ['__version__', 'Infuse']
+__all__ = ["__version__", "Infuse"]

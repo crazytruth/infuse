@@ -137,7 +137,7 @@ class AioCircuitClosedState(_AioCircuitBreakerState):
         if counter >= self._breaker.fail_max:
             await self._breaker.open()
 
-            error_msg = 'Failures threshold reached, circuit breaker opened'
+            error_msg = "Failures threshold reached, circuit breaker opened"
             raise CircuitBreakerError(error_msg)
 
 
@@ -172,7 +172,7 @@ class AioCircuitOpenState(_AioCircuitBreakerState):
         timeout = timedelta(seconds=self._breaker.reset_timeout)
         opened_at = await self._breaker._state_storage.opened_at
         if opened_at and datetime.utcnow() < opened_at + timeout:
-            error_msg = 'Timeout not elapsed yet, circuit breaker still open'
+            error_msg = "Timeout not elapsed yet, circuit breaker still open"
             raise CircuitBreakerError(error_msg)
         else:
             await self._breaker.half_open()
@@ -210,12 +210,10 @@ class AioCircuitHalfOpenState(_AioCircuitBreakerState):
         Opens the circuit breaker.
         """
         await self._breaker.open()
-        raise CircuitBreakerError('Trial call failed, circuit breaker opened')
+        raise CircuitBreakerError("Trial call failed, circuit breaker opened")
 
     async def on_success(self):
         """
         Closes the circuit breaker.
         """
         await self._breaker.close()
-
-

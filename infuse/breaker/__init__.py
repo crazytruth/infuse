@@ -10,8 +10,12 @@ from functools import wraps
 import threading
 
 from infuse.breaker.constants import STATE_CLOSED, STATE_HALF_OPEN, STATE_OPEN
-from infuse.breaker.storages import CircuitMemoryStorage, CircuitAioRedisStorage
-from infuse.breaker.states import AioCircuitClosedState, AioCircuitHalfOpenState, AioCircuitOpenState
+from infuse.breaker.storages import CircuitMemoryStorage
+from infuse.breaker.states import (
+    AioCircuitClosedState,
+    AioCircuitHalfOpenState,
+    AioCircuitOpenState,
+)
 
 __all__ = ("AioCircuitBreaker",)
 
@@ -25,14 +29,23 @@ class AioCircuitBreaker(object):
     This pattern is described by Michael T. Nygard in his book 'Release It!'.
     """
 
-    def __init__(self, fail_max=5, reset_timeout=60, exclude=None,
-                 listeners=None, state_storage=None, name=None):
+    def __init__(
+        self,
+        fail_max=5,
+        reset_timeout=60,
+        exclude=None,
+        listeners=None,
+        state_storage=None,
+        name=None,
+    ):
         """
         Creates a new circuit breaker with the given parameters.
         """
 
         self._lock = threading.RLock()
-        self._state_storage = state_storage or CircuitMemoryStorage(STATE_CLOSED)
+        self._state_storage = state_storage or CircuitMemoryStorage(
+            STATE_CLOSED
+        )
 
         # self._state = AioCircuitClosedState(self)
 
@@ -44,11 +57,23 @@ class AioCircuitBreaker(object):
         self._name = name
 
     @classmethod
-    async def initialize(cls, fail_max=5, reset_timeout=60, exclude=None,
-                         listeners=None, state_storage=None, name=None):
-        self = cls(fail_max=fail_max, reset_timeout=reset_timeout,
-                   exclude=exclude, listeners=listeners,
-                   state_storage=state_storage, name=name)
+    async def initialize(
+        cls,
+        fail_max=5,
+        reset_timeout=60,
+        exclude=None,
+        listeners=None,
+        state_storage=None,
+        name=None,
+    ):
+        self = cls(
+            fail_max=fail_max,
+            reset_timeout=reset_timeout,
+            exclude=exclude,
+            listeners=listeners,
+            state_storage=state_storage,
+            name=name,
+        )
         # self._state = await AioCircuitClosedState.initialize(self)
         self._state = await self._create_new_state(await self.current_state)
         return self
@@ -104,10 +129,12 @@ class AioCircuitBreaker(object):
         }
         try:
             cls = state_map[new_state]
-            return await cls.initialize(self, prev_state=prev_state, notify=notify)
+            return await cls.initialize(
+                self, prev_state=prev_state, notify=notify
+            )
         except KeyError:
             msg = "Unknown state {!r}, valid states: {}"
-            raise ValueError(msg.format(new_state, ', '.join(state_map)))
+            raise ValueError(msg.format(new_state, ", ".join(state_map)))
 
     @property
     async def state(self):
@@ -122,7 +149,9 @@ class AioCircuitBreaker(object):
 
     async def set_state(self, state_str):
         with self._lock:
-            self._state = await self._create_new_state(state_str, prev_state=self._state, notify=True)
+            self._state = await self._create_new_state(
+                state_str, prev_state=self._state, notify=True
+            )
 
     @property
     async def current_state(self):
@@ -184,9 +213,11 @@ class AioCircuitBreaker(object):
 
     async def call(self, func, *args, **kwargs):
         """
-        Calls async `func` with the given `args` and `kwargs` according to the rules
+        Calls async `func` with the given `args` and
+        `kwargs` according to the rules
         implemented by the current state of this circuit breaker.
-        Return a closure to prevent import errors when using without tornado present
+        Return a closure to prevent import errors
+        when using without tornado present
         """
 
         with self._lock:
@@ -201,7 +232,9 @@ class AioCircuitBreaker(object):
         """
         with self._lock:
             await self._state_storage.set_state(STATE_OPEN)
-            self._state = await AioCircuitOpenState.initialize(self, self._state, notify=True)
+            self._state = await AioCircuitOpenState.initialize(
+                self, self._state, notify=True
+            )
 
     async def half_open(self):
         """
@@ -211,7 +244,9 @@ class AioCircuitBreaker(object):
         """
         with self._lock:
             await self._state_storage.set_state(STATE_HALF_OPEN)
-            self._state = await AioCircuitHalfOpenState.initialize(self, self._state, notify=True)
+            self._state = await AioCircuitHalfOpenState.initialize(
+                self, self._state, notify=True
+            )
 
     async def close(self):
         """
@@ -219,7 +254,9 @@ class AioCircuitBreaker(object):
         """
         with self._lock:
             await self._state_storage.set_state(STATE_CLOSED)
-            self._state = await AioCircuitClosedState.initialize(self, self._state, notify=True)
+            self._state = await AioCircuitClosedState.initialize(
+                self, self._state, notify=True
+            )
 
     def __call__(self, *call_args, **call_kwargs):
         """

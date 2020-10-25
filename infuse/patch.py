@@ -15,20 +15,19 @@ from infuse.errors import InfuseErrorCodes
 def patch():
     try:
         wrapt.wrap_function_wrapper(
-            'insanic.services',
-            'Service._dispatch_fetch',
-            request_breaker.wrapped_request
+            "insanic.services",
+            "Service._dispatch_fetch",
+            request_breaker.wrapped_request,
         )
     except AttributeError:
         wrapt.wrap_function_wrapper(
-            'insanic.services',
-            'Service._dispatch_future_fetch',
-            request_breaker.wrapped_request
+            "insanic.services",
+            "Service._dispatch_future_fetch",
+            request_breaker.wrapped_request,
         )
 
 
 class RequestBreaker:
-
     def __init__(self):
         self.storage = {}
         self._breaker = {}
@@ -36,13 +35,17 @@ class RequestBreaker:
 
     async def breaker(self, target_service):
         if self._conn is None:
-            self._conn = await get_connection('infuse')
+            self._conn = await get_connection("infuse")
 
         service_name = target_service.service_name
         if service_name not in self.storage:
-            self.storage[service_name] = await CircuitAioRedisStorage.initialize(
-                state=STATE_CLOSED, redis_object=self._conn,
-                namespace=f"{self.namespace(target_service.service_name)}")
+            self.storage[
+                service_name
+            ] = await CircuitAioRedisStorage.initialize(
+                state=STATE_CLOSED,
+                redis_object=self._conn,
+                namespace=f"{self.namespace(target_service.service_name)}",
+            )
         # await circuit_breaker_storage.init_storage(STATE_CLOSED)
 
         if service_name not in self._breaker:
@@ -50,13 +53,16 @@ class RequestBreaker:
                 fail_max=settings.INFUSE_MAX_FAILURE,
                 reset_timeout=settings.INFUSE_RESET_TIMEOUT,
                 state_storage=self.storage[service_name],
-                listeners=[])
+                listeners=[],
+            )
 
         return self._breaker[service_name]
 
     @staticmethod
     def namespace(service_name):
-        return settings.INFUSE_REDIS_KEY_NAMESPACE_TEMPLATE.format(env=settings.MMT_ENV, service_name=service_name)
+        return settings.INFUSE_REDIS_KEY_NAMESPACE_TEMPLATE.format(
+            env=settings.MMT_ENV, service_name=service_name
+        )
 
     async def wrapped_request(self, wrapped, instance, args, kwargs):
         skip_breaker = kwargs.pop("skip_breaker", False)
@@ -69,13 +75,17 @@ class RequestBreaker:
             try:
                 return await breaker.call(wrapped, *args, **kwargs)
             except CircuitBreakerError as e:
-                service_name = kwargs.get('service_name', None) or self.namespace(instance.service_name)
+                service_name = kwargs.get(
+                    "service_name", None
+                ) or self.namespace(instance.service_name)
                 error_logger.critical(f"[INFUSE] [{service_name}] {e.args[0]}")
                 msg = settings.SERVICE_UNAVAILABLE_MESSAGE.format(service_name)
 
-                exc = exceptions.ServiceUnavailable503Error(description=msg,
-                                                            error_code=InfuseErrorCodes.service_unavailable,
-                                                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+                exc = exceptions.ServiceUnavailable503Error(
+                    description=msg,
+                    error_code=InfuseErrorCodes.service_unavailable,
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
                 raise exc
 
 
