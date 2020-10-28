@@ -1,14 +1,11 @@
+from typing import Dict
+
 from infuse.breaker.constants import STATE_CLOSED
 
 INFUSE_ENABLED = True
 
-INFUSE_CACHE = {
-    "infuse": {
-        "ENGINE": "aioredis",
-        "CONNECTION_INTERFACE": "create_redis_pool",
-        "CLOSE_CONNECTION_INTERFACE": (("close",), ("wait_closed",)),
-        "DATABASE": 3,
-    }
+INFUSE_CACHES: Dict[str, dict] = {
+    "infuse": {"HOST": "localhost", "PORT": 6379, "DATABASE": 15}
 }
 
 INFUSE_RESET_TIMEOUT = 15

@@ -15,7 +15,7 @@ class Infuse:
         for c in dir(config):
             if c.isupper():
                 conf = getattr(config, c)
-                if c == "INFUSE_CACHE":
+                if c == "INFUSE_CACHES":
                     app.config.INSANIC_CACHES.update(conf)
                 elif not hasattr(app.config, c):
                     setattr(app.config, c, conf)

@@ -32,7 +32,6 @@ class TestCircuitBreakerStorageBased:
     def breaker_kwargs(self):
         return {}
 
-    @pytest.mark.asyncio
     async def test_successful_call(self, breaker):
         """CircuitBreaker: it should keep the circuit closed after a successful
         call.
@@ -47,7 +46,6 @@ class TestCircuitBreakerStorageBased:
         assert 0 == await breaker.fail_counter
         assert "closed" == await breaker.current_state
 
-    @pytest.mark.asyncio
     async def test_one_failed_call(self, breaker):
         """CircuitBreaker: it should keep the circuit closed after a few
         failures.
@@ -62,7 +60,6 @@ class TestCircuitBreakerStorageBased:
         assert 1 == await breaker.fail_counter
         assert "closed" == await breaker.current_state
 
-    @pytest.mark.asyncio
     async def test_one_successful_call_after_failed_call(self, breaker):
         """CircuitBreaker: it should keep the circuit closed after few mixed
         outcomes.
@@ -82,7 +79,6 @@ class TestCircuitBreakerStorageBased:
         assert 0 == await breaker.fail_counter
         assert "closed" == await breaker.current_state
 
-    @pytest.mark.asyncio
     async def test_several_failed_calls(self, breaker_kwargs):
         """CircuitBreaker: it should open the circuit after many failures.
         """
@@ -105,7 +101,6 @@ class TestCircuitBreakerStorageBased:
         assert 3 == await breaker.fail_counter
         assert "open" == await breaker.current_state
 
-    @pytest.mark.asyncio
     async def test_traceback_in_circuitbreaker_error(self, breaker_kwargs):
         """CircuitBreaker: it should open the circuit after many failures.
         """
@@ -128,7 +123,6 @@ class TestCircuitBreakerStorageBased:
         assert 3 == await breaker.fail_counter
         assert "open" == await breaker.current_state
 
-    @pytest.mark.asyncio
     async def test_failed_call_after_timeout(self, breaker_kwargs):
         """CircuitBreaker: it should half-open the circuit after timeout.
         """
@@ -161,7 +155,6 @@ class TestCircuitBreakerStorageBased:
         assert 4 == await breaker.fail_counter
         assert "open" == await breaker.current_state
 
-    @pytest.mark.asyncio
     async def test_successful_after_timeout(self, breaker_kwargs):
         """CircuitBreaker: it should close the circuit when a call succeeds
         after timeout. The successful function should only be called once.
@@ -199,7 +192,6 @@ class TestCircuitBreakerStorageBased:
         assert "closed" == await breaker.current_state
         assert 1 == suc.call_count
 
-    @pytest.mark.asyncio
     async def test_failed_call_when_halfopen(self, breaker):
         """CircuitBreaker: it should open the circuit when a call fails in
         half-open state.
@@ -218,7 +210,6 @@ class TestCircuitBreakerStorageBased:
         assert 1 == await breaker.fail_counter
         assert "open" == await breaker.current_state
 
-    @pytest.mark.asyncio
     async def test_successful_call_when_halfopen(self, breaker):
         """CircuitBreaker: it should close the circuit when a call succeeds in
         half-open state.
@@ -236,7 +227,6 @@ class TestCircuitBreakerStorageBased:
         assert 0 == await breaker.fail_counter
         assert "closed" == await breaker.current_state
 
-    @pytest.mark.asyncio
     async def test_close(self, breaker_kwargs):
         """CircuitBreaker: it should allow the circuit to be closed manually.
         """
@@ -265,7 +255,6 @@ class TestCircuitBreakerStorageBased:
         assert 0 == await breaker.fail_counter
         assert "closed" == await breaker.current_state
 
-    @pytest.mark.asyncio
     async def test_transition_events(self, breaker_kwargs):
         """CircuitBreaker: it should call the appropriate functions on every
         state transition.
@@ -300,7 +289,6 @@ class TestCircuitBreakerStorageBased:
 
         assert "closed->open,open->half-open,half-open->closed," == listener.out
 
-    @pytest.mark.asyncio
     async def test_call_events(self, breaker_kwargs):
         """CircuitBreaker: it should call the appropriate functions on every
         successful/failed call.
@@ -340,7 +328,6 @@ class TestCircuitBreakerStorageBased:
             await breaker.call(err)
         assert "-success-failure" == listener.out
 
-    # @pytest.mark.asyncio
     # async def test_generator(self, breaker):
     #     """CircuitBreaker: it should inspect generator values.
     #     """
@@ -384,7 +371,6 @@ class TestCircuitBreakerConfiguration:
     async def breaker(self):
         return await AioCircuitBreaker.initialize()
 
-    @pytest.mark.asyncio
     async def test_default_state(self):
         """CircuitBreaker: it should get initial state from state_storage.
         """
@@ -394,7 +380,6 @@ class TestCircuitBreakerConfiguration:
             breaker_state = await breaker.state
             assert breaker_state.name == state
 
-    @pytest.mark.asyncio
     async def test_default_params(self, breaker):
         """CircuitBreaker: it should define smart defaults.
         """
@@ -407,7 +392,6 @@ class TestCircuitBreakerConfiguration:
         assert () == breaker.listeners
         assert "memory" == breaker._state_storage.name
 
-    @pytest.mark.asyncio
     async def test_new_with_custom_reset_timeout(self):
         """CircuitBreaker: it should support a custom reset timeout value.
         """
@@ -419,7 +403,6 @@ class TestCircuitBreakerConfiguration:
         assert () == breaker.listeners
         assert "memory" == breaker._state_storage.name
 
-    @pytest.mark.asyncio
     async def test_new_with_custom_fail_max(self):
         """CircuitBreaker: it should support a custom maximum number of
         failures.
@@ -432,7 +415,6 @@ class TestCircuitBreakerConfiguration:
         assert () == breaker.listeners
         assert "memory" == breaker._state_storage.name
 
-    @pytest.mark.asyncio
     async def test_new_with_custom_excluded_exceptions(self):
         """CircuitBreaker: it should support a custom list of excluded
         exceptions.
@@ -461,7 +443,6 @@ class TestCircuitBreakerConfiguration:
         breaker.reset_timeout = 30
         assert 30 == breaker.reset_timeout
 
-    @pytest.mark.asyncio
     async def test_call_with_no_args(self, breaker):
         """CircuitBreaker: it should be able to invoke functions with no-args.
         """
@@ -471,7 +452,6 @@ class TestCircuitBreakerConfiguration:
 
         assert await breaker.call(func) is True
 
-    @pytest.mark.asyncio
     async def test_call_with_args(self, breaker):
         """CircuitBreaker: it should be able to invoke functions with args.
         """
@@ -481,7 +461,6 @@ class TestCircuitBreakerConfiguration:
 
         assert [42, "abc"] == await breaker.call(func, 42, "abc")
 
-    @pytest.mark.asyncio
     async def test_call_with_kwargs(self, breaker):
         """CircuitBreaker: it should be able to invoke functions with kwargs.
         """
@@ -491,7 +470,6 @@ class TestCircuitBreakerConfiguration:
 
         assert {"a": 1, "b": 2} == await breaker.call(func, a=1, b=2)
 
-    @pytest.mark.asyncio
     async def test_call_async_with_no_args(self, breaker):
         """CircuitBreaker: it should be able to invoke async functions with no-args.
         """
@@ -502,7 +480,6 @@ class TestCircuitBreakerConfiguration:
         ret = await breaker.call(func)
         assert ret is True
 
-    @pytest.mark.asyncio
     async def test_call_async_with_args(self, breaker):
         """CircuitBreaker: it should be able to invoke async functions with args.
         """
@@ -513,7 +490,6 @@ class TestCircuitBreakerConfiguration:
         ret = await breaker.call(func, 42, "abc")
         assert [42, "abc"] == ret
 
-    @pytest.mark.asyncio
     async def test_call_async_with_kwargs(self, breaker):
         """CircuitBreaker: it should be able to invoke async functions with kwargs.
         """
@@ -556,7 +532,6 @@ class TestCircuitBreakerConfiguration:
         breaker.remove_listener(first)
         assert () == breaker.listeners
 
-    @pytest.mark.asyncio
     async def test_excluded_exceptions(self):
         """CircuitBreaker: it should ignore specific exceptions.
         """
@@ -619,7 +594,6 @@ class TestCircuitBreakerConfiguration:
         breaker.remove_excluded_exception(NotImplementedError)
         assert () == breaker.excluded_exceptions
 
-    @pytest.mark.asyncio
     async def test_decorator(self, breaker):
         """CircuitBreaker: it should be a decorator.
         """
@@ -646,7 +620,6 @@ class TestCircuitBreakerConfiguration:
         assert await suc(True) is True
         assert 0 == await breaker.fail_counter
 
-    @pytest.mark.asyncio
     async def test_decorator_call_future(self, breaker):
         """CircuitBreaker: it should be a decorator.
         """
@@ -677,7 +650,6 @@ class TestCircuitBreakerConfiguration:
         assert ret is True
         assert 0 == await breaker.fail_counter
 
-    @pytest.mark.asyncio
     async def test_name(self):
         """CircuitBreaker: it should allow an optional name to be set and
            retrieved.
@@ -697,9 +669,13 @@ class TestCircuitBreakerRedis(TestCircuitBreakerStorageBased):
     """
 
     @pytest.fixture
-    async def redis(self, redis_proc, redisdb):
+    async def redis(self, infuse_application):
+        host = infuse_application.config.INSANIC_CACHES["infuse"]["HOST"]
+        port = infuse_application.config.INSANIC_CACHES["infuse"]["PORT"]
+        db = infuse_application.config.INSANIC_CACHES["infuse"]["DATABASE"]
+
         redis = await aioredis.create_redis(
-            redis_proc.unixsocket, encoding="utf-8", db=1
+            f"redis://{host}:{port}", encoding="utf-8", db=db
         )
         yield redis
         redis.close()
@@ -717,7 +693,6 @@ class TestCircuitBreakerRedis(TestCircuitBreakerStorageBased):
     async def breaker(self, breaker_kwargs):
         return await AioCircuitBreaker.initialize(**breaker_kwargs)
 
-    @pytest.mark.asyncio
     async def test_namespace(self, redis):
         breaker_kwargs = {
             "state_storage": await CircuitAioRedisStorage.initialize(
@@ -736,7 +711,6 @@ class TestCircuitBreakerRedis(TestCircuitBreakerStorageBased):
         assert keys[0].startswith("infuse:my_app") is True
         assert keys[1].startswith("infuse:my_app") is True
 
-    @pytest.mark.asyncio
     async def test_fallback_state(self, redis, monkeypatch):
         logger = logging.getLogger("pybreaker")
         logger.setLevel(logging.FATAL)
@@ -779,7 +753,6 @@ class TestCircuitBreakerThreads:
         [t.start() for t in threads]
         [t.join() for t in threads]
 
-    @pytest.mark.asyncio
     async def test_fail_thread_safety(self, breaker, monkeypatch):
         """CircuitBreaker: it should compute a failed call atomically to
         avoid race conditions.
@@ -836,7 +809,6 @@ class TestCircuitBreakerThreads:
         self._start_threads(trigger_success, 3)
         assert 1500 == breaker._success_counter
 
-    @pytest.mark.asyncio
     async def test_half_open_thread_safety(self):
         """CircuitBreaker: it should allow only one trial call when the
         circuit is half-open.
@@ -875,7 +847,6 @@ class TestCircuitBreakerThreads:
         self._start_threads(trigger_failure, 5)
         assert 1 == state_listener._count
 
-    @pytest.mark.asyncio
     async def test_fail_max_thread_safety(self, breaker):
         """CircuitBreaker: it should not allow more failed calls than
         'fail_max' setting.
@@ -955,7 +926,6 @@ class TestCircuitBreakerThreads:
 #             tasks
 #
 #
-#     @pytest.mark.asyncio
 #     async def test_fail_thread_safety(self, breaker, monkeypatch):
 #         """CircuitBreaker: it should compute a failed call atomically to
 #         avoid race conditions.
@@ -1004,7 +974,6 @@ class TestCircuitBreakerThreads:
 #         self._start_threads(trigger_success, 3, breaker)
 #         assert 1500 == breaker._success_counter
 #
-#     @pytest.mark.asyncio
 #     async def test_half_open_thread_safety(self):
 #         """CircuitBreaker: it should allow only one trial call when the
 #         circuit is half-open.
@@ -1042,7 +1011,6 @@ class TestCircuitBreakerThreads:
 #         self._start_threads(trigger_failure, 5, self.breaker)
 #         assert 1 == state_listener._count
 #
-#     @pytest.mark.asyncio
 #     async def test_fail_max_thread_safety(self, breaker):
 #         """CircuitBreaker: it should not allow more failed calls than 'fail_max'
 #         setting. Note that with Redis, where we have separate systems

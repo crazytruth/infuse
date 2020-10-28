@@ -1,117 +1,112 @@
 import pytest
+from insanic.conf import settings
 
-from infuse import Infuse
 from infuse.breaker.constants import STATE_OPEN, STATE_HALF_OPEN, STATE_CLOSED
 from infuse.patch import request_breaker
 
-from insanic import Insanic
 from insanic.loading import get_service
-
-settings.configure(ENVIRONMENT="test", SERVICE_CONNECTIONS=["test1", "test2"])
 
 
 class TestInsanicIntegration:
     @pytest.fixture
-    def insanic(self, redis_proc, monkeypatch):
-        monkeypatch.setattr(settings, "REDIS_HOST", redis_proc.host)
-        monkeypatch.setattr(settings, "REDIS_PORT", redis_proc.port)
+    def test_cli(self, loop, infuse_application, test_client):
+        return loop.run_until_complete(test_client(infuse_application))
 
-        app = Insanic("userip")
-        Infuse.init_app(app)
-
-        yield app
-
-    @pytest.fixture
-    def test_cli(self, loop, insanic, test_client):
-        return loop.run_until_complete(test_client(insanic))
-
-    def test_breaker_attached(self, test_cli, insanic):
-        assert hasattr(insanic, "breaker")
+    def test_breaker_attached(self, test_cli, infuse_application):
+        assert hasattr(infuse_application, "breaker")
         after_server_start_listener_names = [
-            f.__name__ for f in insanic.listeners["after_server_start"]
+            f.__name__
+            for f in infuse_application.listeners["after_server_start"]
         ]
         assert (
             "after_server_start_half_open_circuit"
             in after_server_start_listener_names
         )
 
-    def test_config_loaded(self, test_cli, redisdb):
-        global settings
+    def test_config_loaded(self, test_cli, infuse_application):
         from infuse import config
 
         for k in dir(config):
             if k.isupper():
-                if k == "INFUSE_CACHE":
-                    assert "infuse" in settings.INSANIC_CACHES
+                if k == "INFUSE_CACHES":
+                    assert "infuse" in infuse_application.config.INSANIC_CACHES
                     assert (
-                        settings.INSANIC_CACHES["infuse"]
-                        == config.INFUSE_CACHE["infuse"]
+                        infuse_application.config.INSANIC_CACHES["infuse"]
+                        == config.INFUSE_CACHES["infuse"]
                     )
                 else:
-                    assert hasattr(settings, k)
+                    assert hasattr(infuse_application.config, k)
                     conf = getattr(config, k)
-                    from_settings = getattr(settings, k)
+                    from_settings = getattr(infuse_application.config, k)
                     assert conf == from_settings, f"{k}"
 
     @pytest.fixture
-    def breaker_initial_open(self, loop, insanic, test_client, monkeypatch):
+    def breaker_initial_open(
+        self, loop, infuse_application, test_client, monkeypatch
+    ):
         monkeypatch.setattr(settings, "INFUSE_INITIAL_STATE", STATE_OPEN)
-        return loop.run_until_complete(test_client(insanic))
+        return loop.run_until_complete(test_client(infuse_application))
 
     @pytest.fixture
-    def breaker_initial_closed(self, loop, insanic, test_client, monkeypatch):
+    def breaker_initial_closed(
+        self, loop, infuse_application, test_client, monkeypatch
+    ):
         monkeypatch.setattr(settings, "INFUSE_INITIAL_STATE", STATE_CLOSED)
-        return loop.run_until_complete(test_client(insanic))
+        return loop.run_until_complete(test_client(infuse_application))
 
     @pytest.fixture
     def breaker_initial_half_open(
-        self, loop, insanic, test_client, monkeypatch
+        self, loop, infuse_application, test_client, monkeypatch
     ):
         monkeypatch.setattr(settings, "INFUSE_INITIAL_STATE", STATE_HALF_OPEN)
-        return loop.run_until_complete(test_client(insanic))
+        return loop.run_until_complete(test_client(infuse_application))
 
     async def test_initial_state_open(
-        self, breaker_initial_open, insanic, redisdb
+        self, breaker_initial_open, infuse_application
     ):
-        current_state = await insanic.breaker.current_state
+        current_state = await infuse_application.breaker.current_state
         assert current_state == STATE_HALF_OPEN
 
     async def test_initial_state_closed(
-        self, breaker_initial_closed, insanic, redisdb
+        self, breaker_initial_closed, infuse_application
     ):
-        current_state = await insanic.breaker.current_state
+        current_state = await infuse_application.breaker.current_state
         assert current_state == STATE_CLOSED
 
     async def test_initial_state_half_open(
-        self, breaker_initial_half_open, insanic, redisdb
+        self, breaker_initial_half_open, infuse_application
     ):
-        current_state = await insanic.breaker.current_state
+        current_state = await infuse_application.breaker.current_state
         assert current_state == STATE_HALF_OPEN
 
     async def test_redis_keys_for_server_start_and_interservice(
-        self, breaker_initial_closed, insanic, redisdb
+        self, breaker_initial_closed, infuse_application, monkeypatch
     ):
-        current_state = await insanic.breaker.current_state
+
+        current_state = await infuse_application.breaker.current_state
         assert current_state == STATE_CLOSED
 
-        get_service("userip")
+        get_service("testone")
 
-        assert request_breaker.namespace(
-            "userip"
-        ) in insanic.breaker._state_storage._namespace("state")
+        request_breaker_namespace = request_breaker.namespace("testone")
 
-    async def test_redis_keys_for_each_service(self, insanic, redisdb):
-        service_test_one = get_service("test1")
-        service_test_two = get_service("test2")
+        assert (
+            request_breaker_namespace
+            in infuse_application.breaker._state_storage._namespace("state")
+        )
+
+    async def test_redis_keys_for_each_service(self, infuse_application):
+        service_test_one = get_service("testone")
+        service_test_two = get_service("testtwo")
 
         test1_breaker = await request_breaker.breaker(service_test_one)
         test2_breaker = await request_breaker.breaker(service_test_two)
 
         assert (
             test1_breaker._state_storage._namespace("state")
-            == "infuse:test:test1:state"
+            == "infuse:test:testone:state"
         )
         assert (
             test2_breaker._state_storage._namespace("state")
-            == "infuse:test:test2:state"
+            == "infuse:test:testtwo:state"
         )

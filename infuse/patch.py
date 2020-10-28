@@ -13,18 +13,12 @@ from infuse.errors import InfuseErrorCodes
 
 
 def patch():
-    try:
-        wrapt.wrap_function_wrapper(
-            "insanic.services",
-            "Service._dispatch_fetch",
-            request_breaker.wrapped_request,
-        )
-    except AttributeError:
-        wrapt.wrap_function_wrapper(
-            "insanic.services",
-            "Service._dispatch_future_fetch",
-            request_breaker.wrapped_request,
-        )
+
+    wrapt.wrap_function_wrapper(
+        "insanic.services",
+        "Service._dispatch_send",
+        request_breaker.wrapped_request,
+    )
 
 
 class RequestBreaker:
@@ -61,7 +55,7 @@ class RequestBreaker:
     @staticmethod
     def namespace(service_name):
         return settings.INFUSE_REDIS_KEY_NAMESPACE_TEMPLATE.format(
-            env=settings.MMT_ENV, service_name=service_name
+            env=settings.ENVIRONMENT, service_name=service_name
         )
 
     async def wrapped_request(self, wrapped, instance, args, kwargs):

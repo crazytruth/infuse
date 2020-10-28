@@ -41,6 +41,6 @@ setup(
     url="https://github.com/crazytruth/infuse",
     license="MIT",
     packages=find_packages(exclude=["contrib", "docs", "tests*"]),
-    install_requires=["insanic>=0.9.0,<0.10", "wrapt"],
+    install_requires=["insanic-framework>=0.9.0,<0.10", "wrapt"],
     zip_safe=False,
 )
