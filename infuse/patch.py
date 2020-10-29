@@ -1,33 +1,53 @@
 import wrapt
+from insanic.services.adapters import HTTPStatusError
+
+from pybreaker import STATE_CLOSED, CircuitBreakerError
 
 from insanic import exceptions, status
 from insanic.conf import settings
 from insanic.connections import get_connection
 from insanic.log import error_logger
+from insanic.services import Service
 
 from infuse.breaker import AioCircuitBreaker
-from infuse.breaker.constants import STATE_CLOSED
-from infuse.breaker.exceptions import CircuitBreakerError
 from infuse.breaker.storages import CircuitAioRedisStorage
 from infuse.errors import InfuseErrorCodes
 
 
 def patch():
 
-    wrapt.wrap_function_wrapper(
-        "insanic.services",
-        "Service._dispatch_send",
-        request_breaker.wrapped_request,
-    )
+    # if not hasattr(Service._dispatch_send, "__wrapped__"):
+    #     wrapt.wrap_function_wrapper(
+    #         "insanic.services",
+    #         "Service._dispatch_send",
+    #         request_breaker.wrapped_request,
+    #     )
+
+    if not hasattr(Service._dispatch_future, "__wrapped__"):
+        wrapt.wrap_function_wrapper(
+            "insanic.services",
+            "Service._dispatch_future",
+            request_breaker.extract_skip_breaker,
+        )
+
+        wrapt.wrap_function_wrapper(
+            "insanic.services",
+            "Service._dispatch_send",
+            request_breaker.wrapped_request,
+        )
 
 
 class RequestBreaker:
     def __init__(self):
-        self.storage = {}
-        self._breaker = {}
-        self._conn = None
+        self.reset()
 
-    async def breaker(self, target_service):
+    def reset(self):
+        self._breaker = {}
+        self.storage = {}
+        self._conn = None
+        self._skip = {}
+
+    async def breaker(self, target_service: Service) -> AioCircuitBreaker:
         if self._conn is None:
             self._conn = await get_connection("infuse")
 
@@ -38,7 +58,7 @@ class RequestBreaker:
             ] = await CircuitAioRedisStorage.initialize(
                 state=STATE_CLOSED,
                 redis_object=self._conn,
-                namespace=f"{self.namespace(target_service.service_name)}",
+                namespace=self.namespace(target_service.service_name),
             )
         # await circuit_breaker_storage.init_storage(STATE_CLOSED)
 
@@ -48,18 +68,47 @@ class RequestBreaker:
                 reset_timeout=settings.INFUSE_RESET_TIMEOUT,
                 state_storage=self.storage[service_name],
                 listeners=[],
+                exclude=[HTTPStatusError],
             )
 
         return self._breaker[service_name]
 
     @staticmethod
-    def namespace(service_name):
+    def namespace(service_name: str) -> str:
         return settings.INFUSE_REDIS_KEY_NAMESPACE_TEMPLATE.format(
             env=settings.ENVIRONMENT, service_name=service_name
         )
 
+    def extract_skip_breaker(self, wrapped, instance, args, kwargs):
+        if "skip_breaker" in kwargs:
+            skip_breaker = kwargs.pop("skip_breaker", False)
+            request_id = self._identity(args, kwargs)
+            if request_id:
+                self._skip.update({request_id: skip_breaker})
+
+        return wrapped(*args, **kwargs)
+
+    def _identity(self, args, kwargs):
+        id_key = None
+        try:
+            id_key = id(args[0])
+        except IndexError:
+            try:
+                id_key = id(kwargs["request"])
+            except KeyError:
+                pass
+
+        return id_key
+
     async def wrapped_request(self, wrapped, instance, args, kwargs):
-        skip_breaker = kwargs.pop("skip_breaker", False)
+        # skip_breaker = kwargs.pop("skip_breaker", False)
+
+        id_key = self._identity(args, kwargs)
+
+        if id_key:
+            skip_breaker = self._skip.pop(id_key, False)
+        else:
+            skip_breaker = False
 
         if skip_breaker:
             return await wrapped(*args, **kwargs)
