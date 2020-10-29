@@ -4,8 +4,9 @@ by Michael T. Nygard in his book 'Release It!'.
 For more information on this and other patterns and best practices, buy the
 book at http://pragprog.com/titles/mnee/release-it
 """
-
+import asyncio
 import inspect
+from datetime import datetime
 from functools import wraps
 from typing import List, Callable, Union, Awaitable
 
@@ -44,50 +45,6 @@ class AioCircuitBreaker(CircuitBreaker):
     This pattern is described by Michael T. Nygard in his book 'Release It!'.
     """
 
-    #
-    # def __init__(
-    #     self,
-    #     fail_max: int = 5,
-    #     reset_timeout: int = 60,
-    #     exclude: List[Exception] = None,
-    #     listeners: List = None,
-    #     state_storage: CircuitBreakerStorage = None,
-    #     name: str = None,
-    # ):
-    #     """
-    #     Creates a new circuit breaker with the given parameters.
-    #     """
-    #
-    #     self._lock = threading.RLock()
-    #     self._state_storage = state_storage or CircuitMemoryStorage(
-    #         STATE_CLOSED
-    #     )
-    #
-    #     # self._state = AioCircuitClosedState(self)
-    #
-    #     self._fail_max = fail_max
-    #     self._reset_timeout = reset_timeout
-    #
-    #     self._excluded_exceptions = list(exclude or [])
-    #     self._listeners = list(listeners or [])
-    #     self._name = name
-
-    # def __init__(self, fail_max=5, reset_timeout=60, exclude=None,
-    #              listeners=None, state_storage=None, name=None):
-    #     """
-    #     Creates a new circuit breaker with the given parameters.
-    #     """
-    #     self._lock = threading.RLock()
-    #     self._state_storage = state_storage or CircuitMemoryStorage(STATE_CLOSED)
-    #     self._state = self._create_new_state(self.current_state)
-    #
-    #     self._fail_max = fail_max
-    #     self._reset_timeout = reset_timeout
-    #
-    #     self._excluded_exceptions = list(exclude or [])
-    #     self._listeners = list(listeners or [])
-    #     self._name = name
-
     @classmethod
     async def initialize(
         cls,
@@ -118,38 +75,6 @@ class AioCircuitBreaker(CircuitBreaker):
         Returns the current number of consecutive failures.
         """
         return await self._state_storage.counter
-
-    @property
-    def fail_max(self) -> int:
-        """
-        Returns the maximum number of failures tolerated before the circuit is
-        opened.
-        """
-        return self._fail_max
-
-    @fail_max.setter
-    def fail_max(self, number: int) -> None:
-        """
-        Sets the maximum `number` of failures tolerated before the circuit is
-        opened.
-        """
-        self._fail_max = number
-
-    @property
-    def reset_timeout(self) -> int:
-        """
-        Once this circuit breaker is opened, it should remain opened until the
-        timeout period, in seconds, elapses.
-        """
-        return self._reset_timeout
-
-    @reset_timeout.setter
-    def reset_timeout(self, timeout: int) -> None:
-        """
-        Sets the `timeout` period, in seconds, this circuit breaker should be
-        kept open.
-        """
-        self._reset_timeout = timeout
 
     async def _create_new_state(
         self,
@@ -206,52 +131,11 @@ class AioCircuitBreaker(CircuitBreaker):
             s = await s
         return s
 
-    @property
-    def excluded_exceptions(self) -> tuple:
-        """
-        Returns the list of excluded exceptions, e.g., exceptions that should
-        not be considered system errors by this circuit breaker.
-        """
-        return tuple(self._excluded_exceptions)
-
-    def add_excluded_exception(self, exception: Exception) -> None:
-        """
-        Adds an exception to the list of excluded exceptions.
-        """
-        with self._lock:
-            self._excluded_exceptions.append(exception)
-
-    def add_excluded_exceptions(self, *exceptions: List[Exception]) -> None:
-        """
-        Adds exceptions to the list of excluded exceptions.
-        """
-        for exc in exceptions:
-            self.add_excluded_exception(exc)
-
-    def remove_excluded_exception(self, exception: Exception) -> None:
-        """
-        Removes an exception from the list of excluded exceptions.
-        """
-        with self._lock:
-            self._excluded_exceptions.remove(exception)
-
     async def _inc_counter(self):
         """
         Increments the counter of failed calls.
         """
         await self._state_storage.increment_counter()
-
-    def is_system_error(self, exception: Exception) -> bool:
-        """
-        Returns whether the exception `exception` is considered a signal of
-        system malfunction. Business exceptions should not cause this circuit
-        breaker to open.
-        """
-        texc = type(exception)
-        for exc in self._excluded_exceptions:
-            if issubclass(texc, exc):
-                return False
-        return True
 
     async def call(self, func, *args, **kwargs):
         """
@@ -273,10 +157,14 @@ class AioCircuitBreaker(CircuitBreaker):
         until timeout elapses.
         """
         with self._lock:
-            await self._state_storage.set_state(STATE_OPEN)
-            self._state = await AioCircuitOpenState.initialize(
-                self, self._state, notify=True
+            await asyncio.gather(
+                self.set_state(STATE_OPEN),
+                self._state_storage.set_state(STATE_OPEN),
+                self._state_storage.set_opened_at(datetime.utcnow()),
             )
+            # self._state = await AioCircuitOpenState.initialize(
+            #     self, self._state, notify=True
+            # )
 
     async def half_open(self) -> None:
         """
@@ -285,9 +173,9 @@ class AioCircuitBreaker(CircuitBreaker):
         succeeds).
         """
         with self._lock:
-            await self._state_storage.set_state(STATE_HALF_OPEN)
-            self._state = await AioCircuitHalfOpenState.initialize(
-                self, self._state, notify=True
+            await asyncio.gather(
+                self.set_state(STATE_HALF_OPEN),
+                self._state_storage.set_state(STATE_HALF_OPEN),
             )
 
     async def close(self) -> None:
@@ -295,9 +183,9 @@ class AioCircuitBreaker(CircuitBreaker):
         Closes the circuit, e.g. lets the following calls execute as usual.
         """
         with self._lock:
-            await self._state_storage.set_state(STATE_CLOSED)
-            self._state = await AioCircuitClosedState.initialize(
-                self, self._state, notify=True
+            await asyncio.gather(
+                self.set_state(STATE_CLOSED),
+                self._state_storage.set_state(STATE_CLOSED),
             )
 
     def __call__(self, *call_args, **call_kwargs) -> Callable:
@@ -319,45 +207,3 @@ class AioCircuitBreaker(CircuitBreaker):
         if call_args:
             return _outer_wrapper(*call_args)
         return _outer_wrapper
-
-    @property
-    def listeners(self):
-        """
-        Returns the registered listeners as a tuple.
-        """
-        return tuple(self._listeners)
-
-    def add_listener(self, listener):
-        """
-        Registers a listener for this circuit breaker.
-        """
-        with self._lock:
-            self._listeners.append(listener)
-
-    def add_listeners(self, *listeners):
-        """
-        Registers listeners for this circuit breaker.
-        """
-        for listener in listeners:
-            self.add_listener(listener)
-
-    def remove_listener(self, listener):
-        """
-        Unregisters a listener of this circuit breaker.
-        """
-        with self._lock:
-            self._listeners.remove(listener)
-
-    @property
-    def name(self):
-        """
-        Returns the name of this circuit breaker. Useful for logging.
-        """
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        """
-        Set the name of this circuit breaker.
-        """
-        self._name = name

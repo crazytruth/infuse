@@ -14,14 +14,18 @@ from infuse.breaker.storages import CircuitAioRedisStorage
 from infuse.errors import InfuseErrorCodes
 
 
-def patch():
+def patch() -> None:
+    """
+    This patches the :code:`Service._dispatch_future` and
+    :code:`Service._dispatch_send` methods.
 
-    # if not hasattr(Service._dispatch_send, "__wrapped__"):
-    #     wrapt.wrap_function_wrapper(
-    #         "insanic.services",
-    #         "Service._dispatch_send",
-    #         request_breaker.wrapped_request,
-    #     )
+    The :code:`dispatch_future` method is patched to
+    extract the :code:`skip_breaker` keyword argument
+    because current insanic doesn't pass the :code:`kwargs`
+    to :code:`_dispatch_send`.  Maybe if this is fixed in
+    Insanic, this can be removed"
+
+    """
 
     if not hasattr(Service._dispatch_future, "__wrapped__"):
         wrapt.wrap_function_wrapper(
@@ -42,12 +46,18 @@ class RequestBreaker:
         self.reset()
 
     def reset(self):
+        """
+        Resets all instance variables.
+        """
         self._breaker = {}
         self.storage = {}
         self._conn = None
         self._skip = {}
 
     async def breaker(self, target_service: Service) -> AioCircuitBreaker:
+        """
+        Returns the circuit breaker object for the respective service.
+        """
         if self._conn is None:
             self._conn = await get_connection("infuse")
 
@@ -75,11 +85,20 @@ class RequestBreaker:
 
     @staticmethod
     def namespace(service_name: str) -> str:
+        """
+        A helper method to return the namespace for the service.
+        """
         return settings.INFUSE_REDIS_KEY_NAMESPACE_TEMPLATE.format(
             env=settings.ENVIRONMENT, service_name=service_name
         )
 
     def extract_skip_breaker(self, wrapped, instance, args, kwargs):
+        """
+        This wraps :code:`Service._dispatch_future` to extract the
+        :code:`skip_breaker` keyword argument. So when
+        :code:`_dispatch_send` gets called, it can determine
+        if circuit breaking should be bypassed.
+        """
         if "skip_breaker" in kwargs:
             skip_breaker = kwargs.pop("skip_breaker", False)
             request_id = self._identity(args, kwargs)
@@ -89,6 +108,9 @@ class RequestBreaker:
         return wrapped(*args, **kwargs)
 
     def _identity(self, args, kwargs):
+        """
+        Helper method to extract the request objects address.
+        """
         id_key = None
         try:
             id_key = id(args[0])
@@ -101,7 +123,18 @@ class RequestBreaker:
         return id_key
 
     async def wrapped_request(self, wrapped, instance, args, kwargs):
-        # skip_breaker = kwargs.pop("skip_breaker", False)
+        """
+        The wrapper method for :code:`_dispatch_send`. This
+        will pass the call to the breaker where the breaker
+        can short circuit the call if the target service
+        is current not available.  The breaker will not open
+        for :code:`HTTPStatusError`s.
+
+        :param wrapped: The wrapped function which in turns needs to be called by your wrapper function.
+        :param instance:  The object to which the wrapped function was bound when it was called.
+        :param args: The list of positional arguments supplied when the decorated function was called.
+        :param kwargs:  The dictionary of keyword arguments supplied when the decorated function was called.
+        """
 
         id_key = self._identity(args, kwargs)
 

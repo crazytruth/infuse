@@ -1,6 +1,7 @@
 import time
 import calendar
 from datetime import datetime
+from typing import Optional
 
 from insanic.log import error_logger
 from pybreaker import CircuitBreakerStorage, CircuitMemoryStorage, STATE_CLOSED
@@ -14,35 +15,35 @@ __all__ = [
 
 class CircuitAioMemoryStorage(CircuitMemoryStorage):
     @property
-    async def state(self):
+    async def state(self) -> str:
         return super().state
 
     # @state.setter
-    async def set_state(self, state):
+    async def set_state(self, state: str) -> None:
         self._state = state
 
-    async def increment_counter(self):
+    async def increment_counter(self) -> None:
         super().increment_counter()
 
-    async def reset_counter(self):
+    async def reset_counter(self) -> None:
         super().reset_counter()
 
     @property
-    async def counter(self):
+    async def counter(self) -> int:
         return super().counter
 
     @property
-    async def opened_at(self):
+    async def opened_at(self) -> datetime:
         return super().opened_at
 
     # @opened_at.setter
-    async def set_opened_at(self, datetime):
-        self._opened_at = datetime
+    async def set_opened_at(self, dt: datetime):
+        self._opened_at = dt
 
 
 class CircuitAioRedisStorage(CircuitBreakerStorage):
     """
-    Implements a `CircuitBreakerStorage` using redis.
+    Implements a `CircuitBreakerStorage` using aioredis.
     """
 
     BASE_NAMESPACE = "infuse"
@@ -51,10 +52,10 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
 
     def __init__(
         self,
-        state,
+        state: str,
         redis_object,
         namespace=None,
-        fallback_circuit_state=STATE_CLOSED,
+        fallback_circuit_state: str = STATE_CLOSED,
     ):
         """
         Creates a new instance with the given `state` and `redis` object. The
@@ -87,10 +88,10 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
     @classmethod
     async def initialize(
         cls,
-        state,
+        state: str,
         redis_object,
-        namespace=None,
-        fallback_circuit_state=STATE_CLOSED,
+        namespace: str = None,
+        fallback_circuit_state: str = STATE_CLOSED,
     ):
         self = cls(state, redis_object, namespace, fallback_circuit_state)
         await self._initialize_redis_state(state)
@@ -103,7 +104,7 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
         assert resp is True
 
     @property
-    async def state(self):
+    async def state(self) -> str:
         """
         Returns the current circuit breaker state.
         """
@@ -121,15 +122,16 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
 
         return state
 
-    async def set_state(self, state):
+    async def set_state(self, state: str) -> None:
         """
         Set the current circuit breaker state to `state`.
+        A separate method needed to be created setting with
+        asyncio is not possible.
         """
         try:
             await self._redis.set(self._namespace("state"), str(state))
         except self.RedisError:  # pragma: no cover
             self.logger.error("RedisError: set_state", exc_info=True)
-            pass
 
     async def increment_counter(self):
         """
@@ -139,9 +141,8 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
             await self._redis.incr(self._namespace("fail_counter"))
         except self.RedisError:  # pragma: no cover
             self.logger.error("RedisError: increment_counter", exc_info=True)
-            pass
 
-    async def reset_counter(self):
+    async def reset_counter(self) -> None:
         """
         Sets the failure counter to zero.
         """
@@ -155,7 +156,7 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
                 pass
 
     @property
-    async def counter(self):
+    async def counter(self) -> int:
         """
         Returns the current value of the failure counter.
         """
@@ -170,7 +171,7 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
             return 0
 
     @property
-    async def opened_at(self):
+    async def opened_at(self) -> Optional[datetime]:
         """
         Returns a datetime object of the most recent value of when the circuit
         was opened.
@@ -184,7 +185,7 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
             return None
 
     # @opened_at.setter
-    async def set_opened_at(self, now):
+    async def set_opened_at(self, now: datetime):
         """
         Atomically sets the most recent value of when the circuit was opened
         to `now`. Stored in redis as a simple integer of unix epoch time.
@@ -213,9 +214,7 @@ class CircuitAioRedisStorage(CircuitBreakerStorage):
         finally:
             await self._redis.unwatch()
 
-            # pass
-
-    def _namespace(self, key):
+    def _namespace(self, key: str) -> str:
         name_parts = [self.BASE_NAMESPACE]
         if self._namespace_name:
             name_parts.append(self._namespace_name)
