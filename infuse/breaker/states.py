@@ -1,22 +1,19 @@
 from datetime import datetime, timedelta
 
 from inspect import isawaitable
-from infuse.breaker.constants import STATE_OPEN, STATE_HALF_OPEN, STATE_CLOSED
-from infuse.breaker.exceptions import CircuitBreakerError
+from pybreaker import (
+    STATE_OPEN,
+    STATE_HALF_OPEN,
+    STATE_CLOSED,
+    CircuitBreakerState,
+    CircuitBreakerError,
+)
 
 
-class _AioCircuitBreakerState(object):
+class AioCircuitBreakerState(CircuitBreakerState):
     """
-    Implements the behavior needed by all circuit breaker states.
+    Asyncio implementation for the behavior needed by all circuit breaker states.
     """
-
-    def __init__(self, cb, name, notify=False):
-        """
-        Creates a new instance associated with the circuit breaker `cb` and
-        identified by `name`.
-        """
-        self._breaker = cb
-        self._name = name
 
     @classmethod
     async def initialize(cls, cb, prev_state=None, notify=False):
@@ -30,14 +27,7 @@ class _AioCircuitBreakerState(object):
         """
         pass
 
-    @property
-    def name(self):
-        """
-        Returns a human friendly name that identifies this state.
-        """
-        return self._name
-
-    async def _handle_error(self, exc):
+    async def _handle_error(self, exc, reraise=True):
         """
         Handles a failed call to the guarded operation.
         """
@@ -48,7 +38,9 @@ class _AioCircuitBreakerState(object):
             await self.on_failure(exc)
         else:
             await self._handle_success()
-        raise exc
+
+        if reraise:
+            raise exc
 
     async def _handle_success(self):
         """
@@ -104,7 +96,7 @@ class _AioCircuitBreakerState(object):
         pass
 
 
-class AioCircuitClosedState(_AioCircuitBreakerState):
+class AioCircuitClosedState(AioCircuitBreakerState):
     """
     In the normal "closed" state, the circuit breaker executes operations as
     usual. If the call succeeds, nothing happens. If it fails, however, the
@@ -141,7 +133,7 @@ class AioCircuitClosedState(_AioCircuitBreakerState):
             raise CircuitBreakerError(error_msg)
 
 
-class AioCircuitOpenState(_AioCircuitBreakerState):
+class AioCircuitOpenState(AioCircuitBreakerState):
     """
     When the circuit is "open", calls to the circuit breaker fail immediately,
     without any attempt to execute the real operation. This is indicated by the
@@ -187,7 +179,7 @@ class AioCircuitOpenState(_AioCircuitBreakerState):
         return await self.before_call(func, *args, **kwargs)
 
 
-class AioCircuitHalfOpenState(_AioCircuitBreakerState):
+class AioCircuitHalfOpenState(AioCircuitBreakerState):
     """
     In the "half-open" state, the next call to the circuit breaker is allowed
     to execute the dangerous operation. Should the call succeed, the circuit
