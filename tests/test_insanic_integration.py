@@ -1,10 +1,10 @@
 import pytest
+
+from pybreaker import STATE_OPEN, STATE_HALF_OPEN, STATE_CLOSED
 from insanic.conf import settings
-
-from infuse.breaker.constants import STATE_OPEN, STATE_HALF_OPEN, STATE_CLOSED
-from infuse.patch import request_breaker
-
 from insanic.loading import get_service
+
+from infuse.patch import request_breaker
 
 
 class TestInsanicIntegration:
@@ -65,7 +65,7 @@ class TestInsanicIntegration:
         self, breaker_initial_open, infuse_application
     ):
         current_state = await infuse_application.breaker.current_state
-        assert current_state == STATE_HALF_OPEN
+        assert current_state == STATE_OPEN
 
     async def test_initial_state_closed(
         self, breaker_initial_closed, infuse_application
@@ -82,13 +82,14 @@ class TestInsanicIntegration:
     async def test_redis_keys_for_server_start_and_interservice(
         self, breaker_initial_closed, infuse_application, monkeypatch
     ):
+        # What does this do??
 
         current_state = await infuse_application.breaker.current_state
         assert current_state == STATE_CLOSED
 
-        get_service("testone")
-
-        request_breaker_namespace = request_breaker.namespace("testone")
+        request_breaker_namespace = request_breaker.namespace(
+            infuse_application.name
+        )
 
         assert (
             request_breaker_namespace

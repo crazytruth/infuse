@@ -1,19 +1,25 @@
 import aioredis
 import asyncio
 import logging
-import mock
 import pytest
 import threading
 
 from aioredis.errors import RedisError
+from pybreaker import (
+    STATE_CLOSED,
+    STATE_HALF_OPEN,
+    STATE_OPEN,
+    CircuitBreakerError,
+    CircuitBreakerListener,
+)
 from time import sleep
 from types import MethodType
 
 from infuse.breaker import AioCircuitBreaker
-from infuse.breaker.constants import STATE_CLOSED, STATE_HALF_OPEN, STATE_OPEN
-from infuse.breaker.exceptions import CircuitBreakerError
-from infuse.breaker.listeners import CircuitBreakerListener
-from infuse.breaker.storages import CircuitAioRedisStorage, CircuitMemoryStorage
+from infuse.breaker.storages import (
+    CircuitAioRedisStorage,
+    CircuitAioMemoryStorage,
+)
 
 
 class TestCircuitBreakerStorageBased:
@@ -24,7 +30,7 @@ class TestCircuitBreakerStorageBased:
 
     # @pytest.fixture(autouse=True)
     @pytest.fixture()
-    async def breaker(self, breaker_kwargs):
+    async def breaker(self, breaker_kwargs, infuse_application):
         breaker = await AioCircuitBreaker.initialize(**breaker_kwargs)
         return breaker
 
@@ -163,9 +169,12 @@ class TestCircuitBreakerStorageBased:
             fail_max=3, reset_timeout=1, **breaker_kwargs
         )
 
-        suc = mock.MagicMock(return_value=True)
+        call_count = {"suc": 0}
 
-        # def suc(): return True
+        def suc():
+            call_count["suc"] += 1
+            return True
+
         def err():
             raise NotImplementedError()
 
@@ -190,7 +199,7 @@ class TestCircuitBreakerStorageBased:
         assert (await breaker.call(suc)) is True
         assert 0 == await breaker.fail_counter
         assert "closed" == await breaker.current_state
-        assert 1 == suc.call_count
+        assert 1 == call_count["suc"]
 
     async def test_failed_call_when_halfopen(self, breaker):
         """CircuitBreaker: it should open the circuit when a call fails in
@@ -375,7 +384,7 @@ class TestCircuitBreakerConfiguration:
         """CircuitBreaker: it should get initial state from state_storage.
         """
         for state in (STATE_OPEN, STATE_CLOSED, STATE_HALF_OPEN):
-            storage = CircuitMemoryStorage(state)
+            storage = CircuitAioMemoryStorage(state)
             breaker = await AioCircuitBreaker.initialize(state_storage=storage)
             breaker_state = await breaker.state
             assert breaker_state.name == state

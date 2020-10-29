@@ -10,7 +10,7 @@ from insanic.conf import settings
 from infuse import Infuse
 
 settings.configure(
-    ENVIRONMENT="test", SERVICE_CONNECTIONS=["testone", "testtwo"]
+    ENVIRONMENT="test", SERVICE_CONNECTIONS=["testone", "testtwo", "testthree"]
 )
 
 
@@ -20,7 +20,7 @@ def infuse_application():
 
     Infuse.init_app(app)
 
-    return app
+    yield app
 
 
 @pytest.fixture(autouse=True)
@@ -52,3 +52,8 @@ async def set_redis_connection_info(monkeypatch):
 
     redis.close()
     await redis.wait_closed()
+
+    from insanic.connections import _connections
+
+    close_tasks = _connections.close_all()
+    await close_tasks
