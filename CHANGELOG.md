@@ -4,7 +4,10 @@ Changelog for infuse
 0.3.3 (unreleased)
 ------------------
 
-- Nothing changed yet.
+-   REFACTOR: inherit from pybreaker and only implement
+    needed classes
+-   CHORE: more typing and docs
+-   CHORE: restrict insanic-framework to >0.9
 
 
 0.3.2 (2019-11-22)
