@@ -1,15 +1,14 @@
+from insanic import Insanic
 from insanic.connections import get_connection
-from insanic.log import logger
 
 from infuse.breaker import AioCircuitBreaker
-from infuse.breaker.constants import STATE_OPEN
 from infuse.breaker.storages import CircuitAioRedisStorage
 from infuse.patch import patch
 
 
 class Infuse:
     @classmethod
-    def load_config(cls, app):
+    def load_config(cls, app: Insanic) -> None:
         from . import config
 
         for c in dir(config):
@@ -21,7 +20,7 @@ class Infuse:
                     setattr(app.config, c, conf)
 
     @classmethod
-    def attach_listeners(cls, app):
+    def attach_listeners(cls, app: Insanic) -> None:
         @app.listener("after_server_start")
         async def after_server_start_half_open_circuit(
             app, loop=None, **kwargs
@@ -45,19 +44,25 @@ class Infuse:
                 listeners=[],
             )
 
-            current_state = await app.breaker.current_state
-
             # if open, try half open state to allow connections.
             # if half-open, pass
             # if closed, pass
-            if current_state == STATE_OPEN:
-                await app.breaker.half_open()
-                logger.debug("[INFUSE] State Converted to half open.")
-            else:
-                logger.debug(f"[INFUSE] State is {current_state}.")
+            # if current_state == STATE_OPEN:
+            #     await app.breaker.half_open()
+            #     logger.debug("[INFUSE] State Converted to half open.")
+            # else:
+            #     logger.debug(f"[INFUSE] State is {current_state}.")
 
     @classmethod
-    def init_app(cls, app):
+    def init_app(cls, app: Insanic) -> None:
+        """
+        The initial entrypoint to initialize Infuse.
+
+        #. Loads Infuse specific configurations
+        #. Attaches a listener to change state to value defined in :code:`INFUSE_INITIAL_STATE`.
+        #.  Patches the Service object that handles circuit state when sending
+            requests to other services.
+        """
         cls.load_config(app)
         cls.attach_listeners(app)
         patch()

@@ -1,15 +1,23 @@
 from typing import Dict
 
-from infuse.breaker.constants import STATE_CLOSED
+from pybreaker import STATE_CLOSED
 
-INFUSE_ENABLED = True
+#: Flag for whether or not to enable circuit breaking throughout the application.
+INFUSE_ENABLED: bool = True
 
+#: The cache for where the states will be saved.
 INFUSE_CACHES: Dict[str, dict] = {
     "infuse": {"HOST": "localhost", "PORT": 6379, "DATABASE": 15}
 }
 
-INFUSE_RESET_TIMEOUT = 15
-INFUSE_MAX_FAILURE = 5
+#: The reset timeout in seconds to retry.
+INFUSE_RESET_TIMEOUT: int = 15
 
-INFUSE_INITIAL_STATE = STATE_CLOSED
-INFUSE_REDIS_KEY_NAMESPACE_TEMPLATE = "{env}:{service_name}"
+#: The number of consecutive failures to another application before the circuit breaker trips.
+INFUSE_MAX_FAILURE: int = 5
+
+#: The initial state when a new instance of this application is launched.
+INFUSE_INITIAL_STATE: str = STATE_CLOSED
+
+#: The default redis key template.
+INFUSE_REDIS_KEY_NAMESPACE_TEMPLATE: str = "{env}:{service_name}"
