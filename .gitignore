@@ -62,7 +62,7 @@ instance/
 .scrapy
 
 # Sphinx documentation
-docs/_build/
+docs/build/
 
 # PyBuilder
 target/
@@ -101,5 +101,3 @@ ENV/
 .mypy_cache/
 
 .idea/
-.python-version
-.coverage
