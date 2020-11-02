@@ -1,5 +1,5 @@
-Changelog for infuse
-=====================
+Change Log
+==========
 
 0.3.3 (unreleased)
 ------------------
@@ -8,6 +8,11 @@ Changelog for infuse
     needed classes
 -   CHORE: more typing and docs
 -   CHORE: restrict insanic-framework to >0.9
+
+.. note::
+
+    Up until this release, :code:`Infuse` was only an internal
+    release.
 
 
 0.3.2 (2019-11-22)
@@ -59,7 +64,3 @@ Changelog for infuse
 
 - Stabilize for aioredis
 - Initialize insanic app with infuse
-
-
-0.0.2 (2017-08-24)
-------------------

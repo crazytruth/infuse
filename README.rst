@@ -1,5 +1,36 @@
+.. image:: https://github.com/crazytruth/infuse/raw/master/docs/source/_static/infuse.png
+
 Infuse
 ======
+
+|Build Status| |Documentation Status| |Codecov|
+
+|PyPI pyversions| |PyPI version| |PyPI license| |Black|
+
+.. |Build Status| image:: https://github.com/crazytruth/infuse/workflows/Python%20Tests/badge.svg
+    :target: https://github.com/crazytruth/infuse/actions?query=workflow%3A%22Python+Tests%22
+
+.. |Documentation Status| image:: https://readthedocs.org/projects/infuse/badge/?version=latest
+    :target: http://infuse.readthedocs.io/?badge=latest
+
+.. |Codecov| image:: https://codecov.io/gh/crazytruth/infuse/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/crazytruth/infuse
+
+.. |PyPI version| image:: https://img.shields.io/pypi/v/insanic-infuse
+    :target: https://pypi.org/project/insanic-infuse/
+
+.. |PyPI pyversions| image:: https://img.shields.io/pypi/pyversions/insanic-infuse
+    :target: https://pypi.org/project/insanic-infuse/
+
+.. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
+    :target: https://github.com/psf/black
+
+.. |PyPI license| image:: https://img.shields.io/github/license/crazytruth/infuse?style=flat-square
+    :target: https://pypi.org/project/insanic-infuse/
+
+.. end-badges
+
+
 
 Infuse is a Python implementation of the Circuit Breaker pattern, described
 in Michael T. Nygard's book `Release It!`_.
@@ -9,8 +40,10 @@ without destroying the entire system. This is done by wrapping dangerous
 operations (typically integration points) with a component that can circumvent
 calls when the system is not healthy"*.
 
-This is heavily based on `pybreaker`_. For full documentation refer to `pybreaker`_.
-What is different from pybreaker is that it includes asynchronous storage options.
+This basically extends `pybreaker`_ with support for `Insanic`_.
+For full documentation refer to `pybreaker`_.
+What is different from pybreaker is that it is an asynchronous implementation
+with asynchronous storage options.
 
 We needed a lot more customizations compared to what the pybreaker was providing.
 Especially with async storage options. The whole CircuitBreaker implementation needed
@@ -22,50 +55,64 @@ Whats up with the name?
 
 Some people might ask why infuse? My basic thought process:
 
-1. Need a name that starts with "insan~"
-2. Can't think of one..
-3. How about just "in~"
-4. "Circuit Breaker" -> Fuse box
-5. infuse?
+#. Need a name that starts with "in~"
+#. "Circuit Breaker" -> Fuse box
+#. infuse?
 
 
 Features
 --------
 
-* pybreaker features +
-* Optional aioredis backing
+-   pybreaker features +
+-   aioredis backing
 
 
 Requirements
 ------------
 
+-   infuse is only `Python`_ 3.4+ (support for asyncio)
 
-* pybreaker is originally : `Python`_ 2.7+ (or Python 3.0+)
-* but infuse is only `Python`_ 3.4+ (support for asyncio)
+    - pybreaker is originally : `Python`_ 2.7+ (or Python 3.0+)
+
+-   redis if using async redis (aioredis)
 
 
 Installation
 ------------
 
 Run the following command line to download the latest stable version of
-infuse from `PyPI`_::
+infuse from `PyPI`_
 
-    $ pip install infuse
+.. code-block:: sh
 
-If you are a `Git`_ user, you might want to download the current development
-version::
-
-    $ git clone git@github.com:MyMusicTaste/infuse.git
-    $ cd infuse
-    $ python setup.py test
-    $ python setup.py install
+    $ pip install insanic-infuse
 
 
-What Does a Circuit Breaker Do?(taken from `pybreaker`_)
-````````````````````````````````````````````````````````
+Usage
+-----
+
+Usage of Infuse is different from `pybreaker`_, where everything is done
+through the Infuse :code:`init_app` method.
+
+.. code-block:: python
+
+    from insanic import Insanic
+    from infuse import Infuse
+
+    app = Insanic("example", version="0.1.0")
+    Infuse.init_app(app)
+
+But, before we go on some explanation of what a circuit breaker does:
+
+
+What Does a Circuit Breaker Do? (from `pybreaker`_)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Let's say you want to use a circuit breaker on a function that updates a row
-in the ``customer`` database table::
+in the ``customer`` database table.
+
+
+.. code-block:: python
 
     def update_customer(cust):
         # Do stuff here...
@@ -75,26 +122,29 @@ in the ``customer`` database table::
     updated_customer = await db_breaker.call(update_customer, my_customer)
 
 
-According to the default parameters, the circuit breaker ``db_breaker`` will
-automatically open the circuit after 5 consecutive failures in
-``update_customer``.
+According to the default parameters, the circuit breaker :code:`db_breaker` will
+automatically **OPEN** the circuit after 5 consecutive failures in
+:code:`update_customer`.
 
-When the circuit is open, all calls to ``update_customer`` will fail immediately
-(raising ``CircuitBreakerError``) without any attempt to execute the real
+When the circuit is **OPEN**, all calls to :code:`update_customer` will fail immediately
+(raising a :code:`CircuitBreakerError`) without any attempt to execute the real
 operation.
 
 After 60 seconds, the circuit breaker will allow the next call to
-``update_customer`` pass through. If that call succeeds, the circuit is closed;
-if it fails, however, the circuit is opened again until another timeout elapses.
+:code:`update_customer` pass through.  This state is called **HALF OPEN**.
+If that call succeeds, the circuit is **CLOSED**;
+if it fails, however, the circuit is **OPEN**ed again until another timeout elapses.
 
 
-Excluding Exceptions(taken from `pybreaker`_)
-`````````````````````````````````````````````
+Excluding Exceptions(from `pybreaker`_)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 By default, a failed call is any call that raises an exception. However, it's
 common to raise exceptions to also indicate business exceptions, and those
 exceptions should be ignored by the circuit breaker as they don't indicate
-system errors::
+system errors.
+
+.. code-block:: python
 
     # At creation time...
     db_breaker = CircuitBreaker(exclude=[CustomerValidationError])
@@ -104,44 +154,57 @@ system errors::
 
 
 In that case, when any function guarded by that circuit breaker raises
-``CustomerValidationError`` (or any exception derived from
-``CustomerValidationError``), that call won't be considered a system failure.
+:code:`CustomerValidationError` (or any exception derived from
+:code:`CustomerValidationError`), that call won't be considered a system failure.
 
 
-Monitoring and Management(taken from `pybreaker`_)
-``````````````````````````````````````````````````
+What does Infuse do?
+^^^^^^^^^^^^^^^^^^^^
 
-A circuit breaker provides properties and functions you can use to monitor and
-change its current state::
+Infuse, when initializing the Insanic application
 
-    # Get the current number of consecutive failures
-    print await db_breaker.fail_counter
+#.  Sets its own state on the storage as defined in :code:`INFUSE_INITIAL_CIRCUIT_STATE`.
+#.  Patches Insanic's Service object to wrap with circuit breaking.
 
-    # Get/set the maximum number of consecutive failures
-    print db_breaker.fail_max
-    db_breaker.fail_max = 10
+Other than this, there are some configurations you can tweak.
+Pretty simple.
 
-    # Get/set the current reset timeout period (in seconds)
-    print db_breaker.reset_timeout
-    db_breaker.reset_timeout = 60
 
-    # Get the current state, i.e., 'open', 'half-open', 'closed'
-    print db_breaker.current_state
+Release History
+===============
 
-    # Closes the circuit
-    await db_breaker.close()
+View release history `here <CHANGELOG.rst>`_
 
-    # Half-opens the circuit
-    await db_breaker.half_open()
 
-    # Opens the circuit
-    await db_breaker.open()
+Contributing
+=============
+
+For guidance on setting up a development environment and how to make a contribution to Infuse,
+see the `CONTRIBUTING.rst <CONTRIBUTING.rst>`_ guidelines.
+
+
+Meta
+====
+
+Distributed under the MIT license. See `LICENSE <LICENSE>`_ for more information.
+
+Thanks to all the people at my prior company that worked with me to make this possible.
+
+Links
+=====
+
+- Documentation: https://infuse.readthedocs.io/en/latest/
+- Releases: https://pypi.org/project/insanic-infuse/
+- Code: https://www.github.com/crazytruth/infuse/
+- Issue Tracker: https://www.github.com/crazytruth/infuse/issues
+- Insanic Documentation: http://insanic.readthedocs.io/
+- Insanic Repository: https://www.github.com/crazytruth/insanic/
 
 
 
 .. _Python: http://python.org
-.. _Jython: http://jython.org
 .. _Release It!: http://pragprog.com/titles/mnee/release-it
-.. _PyPI: http://pypi.python.org
+.. _PyPI: https://pypi.org/project/insanic-infuse/
 .. _Git: http://git-scm.com
 .. _pybreaker: https://github.com/danielfm/pybreaker
+.. _Insanic: https://github.com/crazytruth/insanic
