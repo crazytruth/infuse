@@ -63,4 +63,4 @@ jobs:
       with:
         fail_ci_if_error: true
         env_vars: PYTHON
-        name: iniesta
+        name: infuse
