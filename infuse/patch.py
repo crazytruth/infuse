@@ -1,5 +1,4 @@
 import wrapt
-from insanic.services.adapters import HTTPStatusError
 
 from pybreaker import STATE_CLOSED, CircuitBreakerError
 
@@ -12,6 +11,7 @@ from insanic.services import Service
 from infuse.breaker import AioCircuitBreaker
 from infuse.breaker.storages import CircuitAioRedisStorage
 from infuse.errors import InfuseErrorCodes
+from infuse.utils import load_from_path
 
 
 def patch() -> None:
@@ -62,23 +62,32 @@ class RequestBreaker:
             self._conn = await get_connection("infuse")
 
         service_name = target_service.service_name
+        name_space_name = self.namespace(target_service.service_name)
+
         if service_name not in self.storage:
             self.storage[
                 service_name
             ] = await CircuitAioRedisStorage.initialize(
                 state=STATE_CLOSED,
                 redis_object=self._conn,
-                namespace=self.namespace(target_service.service_name),
+                namespace=name_space_name,
+                fallback_circuit_state=settings.INFUSE_FALLBACK_CIRCUIT_STATE,
             )
-        # await circuit_breaker_storage.init_storage(STATE_CLOSED)
 
         if service_name not in self._breaker:
             self._breaker[service_name] = await AioCircuitBreaker.initialize(
-                fail_max=settings.INFUSE_MAX_FAILURE,
-                reset_timeout=settings.INFUSE_RESET_TIMEOUT,
+                fail_max=settings.INFUSE_BREAKER_MAX_FAILURE,
+                reset_timeout=settings.INFUSE_BREAKER_RESET_TIMEOUT,
                 state_storage=self.storage[service_name],
-                listeners=[],
-                exclude=[HTTPStatusError],
+                listeners=[
+                    load_from_path(path)
+                    for path in settings.INFUSE_BREAKER_LISTENERS
+                ],
+                exclude=[
+                    load_from_path(path)
+                    for path in settings.INFUSE_BREAKER_EXCLUDE_EXCEPTIONS
+                ],
+                name=name_space_name,
             )
 
         return self._breaker[service_name]
@@ -128,7 +137,7 @@ class RequestBreaker:
         will pass the call to the breaker where the breaker
         can short circuit the call if the target service
         is current not available.  The breaker will not open
-        for :code:`HTTPStatusError`s.
+        for :code:`HTTPStatusError` s.
 
         :param wrapped: The wrapped function which in turns needs to be called by your wrapper function.
         :param instance:  The object to which the wrapped function was bound when it was called.

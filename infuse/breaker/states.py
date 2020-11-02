@@ -18,13 +18,13 @@ class AioCircuitBreakerState(CircuitBreakerState):
     """
 
     @classmethod
-    async def initialize(cls, cb, prev_state=None, notify: bool = False):
+    async def initialize(cls, cb, prev_state: str = None, notify: bool = False):
 
         self = cls(cb, prev_state, notify)
         await self._initialize(cb, prev_state, notify)
         return self
 
-    async def _initialize(self, cb, prev_state, notify):
+    async def _initialize(self, cb, prev_state: str, notify: bool):
         """
         Override this method to initialize async state.
         """

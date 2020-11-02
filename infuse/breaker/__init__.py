@@ -66,6 +66,7 @@ class AioCircuitBreaker(CircuitBreaker):
             name=name,
         )
 
+        # need this because CircuitBreaker calls our create_new_state
         self._state = await self._state
         return self
 

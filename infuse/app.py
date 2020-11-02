@@ -1,7 +1,6 @@
 from insanic import Insanic
 from insanic.connections import get_connection
 
-from infuse.breaker import AioCircuitBreaker
 from infuse.breaker.storages import CircuitAioRedisStorage
 from infuse.patch import patch
 
@@ -32,34 +31,19 @@ class Infuse:
                 env=app.config.ENVIRONMENT, service_name=app.config.SERVICE_NAME
             )
 
-            circuit_breaker_storage = await CircuitAioRedisStorage.initialize(
-                state=app.config.INFUSE_INITIAL_STATE,
+            await CircuitAioRedisStorage.initialize(
+                state=app.config.INFUSE_INITIAL_CIRCUIT_STATE,
                 redis_object=conn,
                 namespace=namespace,
             )
-            app.breaker = await AioCircuitBreaker.initialize(
-                fail_max=app.config.INFUSE_MAX_FAILURE,
-                reset_timeout=app.config.INFUSE_RESET_TIMEOUT,
-                state_storage=circuit_breaker_storage,
-                listeners=[],
-            )
-
-            # if open, try half open state to allow connections.
-            # if half-open, pass
-            # if closed, pass
-            # if current_state == STATE_OPEN:
-            #     await app.breaker.half_open()
-            #     logger.debug("[INFUSE] State Converted to half open.")
-            # else:
-            #     logger.debug(f"[INFUSE] State is {current_state}.")
 
     @classmethod
     def init_app(cls, app: Insanic) -> None:
         """
         The initial entrypoint to initialize Infuse.
 
-        #. Loads Infuse specific configurations
-        #. Attaches a listener to change state to value defined in :code:`INFUSE_INITIAL_STATE`.
+        #.  Loads Infuse specific configurations
+        #.  Attaches a listener to change state to value defined in :code:`INFUSE_INITIAL_STATE`.
         #.  Patches the Service object that handles circuit state when sending
             requests to other services.
         """
