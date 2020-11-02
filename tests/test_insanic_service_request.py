@@ -72,8 +72,8 @@ class TestPatchedServiceRequest:
         self, infuse_client, dispatch_fail, monkeypatch
     ):
 
-        monkeypatch.setattr(settings, "INFUSE_MAX_FAILURE", 3)
-        monkeypatch.setattr(settings, "INFUSE_RESET_TIMEOUT", 1)
+        monkeypatch.setattr(settings, "INFUSE_BREAKER_MAX_FAILURE", 3)
+        monkeypatch.setattr(settings, "INFUSE_BREAKER_RESET_TIMEOUT", 1)
 
         service = get_service("testthree")
 
@@ -118,8 +118,8 @@ class TestPatchedServiceRequest:
         self, infuse_client, dispatch_fail, monkeypatch
     ):
 
-        monkeypatch.setattr(settings, "INFUSE_MAX_FAILURE", 3)
-        monkeypatch.setattr(settings, "INFUSE_RESET_TIMEOUT", 1)
+        monkeypatch.setattr(settings, "INFUSE_BREAKER_MAX_FAILURE", 3)
+        monkeypatch.setattr(settings, "INFUSE_BREAKER_RESET_TIMEOUT", 1)
 
         service = get_service("testthree")
 
@@ -134,8 +134,8 @@ class TestPatchedServiceRequest:
     async def test_dont_open_for_client_errors(
         self, infuse_client, monkeypatch, dispatch_client_error
     ):
-        monkeypatch.setattr(settings, "INFUSE_MAX_FAILURE", 3)
-        monkeypatch.setattr(settings, "INFUSE_RESET_TIMEOUT", 1)
+        monkeypatch.setattr(settings, "INFUSE_BREAKER_MAX_FAILURE", 3)
+        monkeypatch.setattr(settings, "INFUSE_BREAKER_RESET_TIMEOUT", 1)
 
         service = get_service("testthree")
 
