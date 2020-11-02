@@ -1,7 +1,7 @@
 Change Log
 ==========
 
-0.3.3 (unreleased)
+0.4.0 (2020-11-02)
 ------------------
 
 -   REFACTOR: inherit from pybreaker and only implement
