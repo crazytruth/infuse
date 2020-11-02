@@ -169,6 +169,7 @@ Infuse, when initializing the Insanic application
 Other than this, there are some configurations you can tweak.
 Pretty simple.
 
+For more information, please refer to the `Documentation`_.
 
 Release History
 ===============
@@ -208,3 +209,4 @@ Links
 .. _Git: http://git-scm.com
 .. _pybreaker: https://github.com/danielfm/pybreaker
 .. _Insanic: https://github.com/crazytruth/insanic
+.. _Documentation: https://infuse.readthedocs.io/en/latest/
