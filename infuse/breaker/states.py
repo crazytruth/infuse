@@ -1,45 +1,40 @@
 from datetime import datetime, timedelta
 
 from inspect import isawaitable
-from infuse.breaker.constants import STATE_OPEN, STATE_HALF_OPEN, STATE_CLOSED
-from infuse.breaker.exceptions import CircuitBreakerError
+from typing import Callable, Any
+
+from pybreaker import (
+    STATE_OPEN,
+    STATE_HALF_OPEN,
+    STATE_CLOSED,
+    CircuitBreakerState,
+    CircuitBreakerError,
+)
 
 
-class _AioCircuitBreakerState(object):
+class AioCircuitBreakerState(CircuitBreakerState):
     """
-    Implements the behavior needed by all circuit breaker states.
+    Asyncio implementation for the behavior needed by all circuit breaker states.
     """
-
-    def __init__(self, cb, name, notify=False):
-        """
-        Creates a new instance associated with the circuit breaker `cb` and
-        identified by `name`.
-        """
-        self._breaker = cb
-        self._name = name
 
     @classmethod
-    async def initialize(cls, cb, prev_state=None, notify=False):
+    async def initialize(cls, cb, prev_state: str = None, notify: bool = False):
+
         self = cls(cb, prev_state, notify)
-        await self._initialize()
+        await self._initialize(cb, prev_state, notify)
         return self
 
-    async def _initialize(self):
+    async def _initialize(self, cb, prev_state: str, notify: bool):
         """
-        Override this method to initialize async
+        Override this method to initialize async state.
         """
         pass
 
-    @property
-    def name(self):
-        """
-        Returns a human friendly name that identifies this state.
-        """
-        return self._name
-
-    async def _handle_error(self, exc):
+    async def _handle_error(self, exc: Exception, reraise: bool = True):
         """
         Handles a failed call to the guarded operation.
+
+        :param reraise: If true, raises the error, else passes.
         """
         if self._breaker.is_system_error(exc):
             await self._breaker._inc_counter()
@@ -48,9 +43,11 @@ class _AioCircuitBreakerState(object):
             await self.on_failure(exc)
         else:
             await self._handle_success()
-        raise exc
 
-    async def _handle_success(self):
+        if reraise:
+            raise exc
+
+    async def _handle_success(self) -> None:
         """
         Handles a successful call to the guarded operation.
         """
@@ -59,7 +56,7 @@ class _AioCircuitBreakerState(object):
         for listener in self._breaker.listeners:
             listener.success(self._breaker)
 
-    async def call(self, func, *args, **kwargs):
+    async def call(self, func: Callable, *args, **kwargs):
         """
         Calls async `func` with the given `args` and `kwargs`, and updates the
         circuit breaker state according to the result.
@@ -82,7 +79,7 @@ class _AioCircuitBreakerState(object):
             await self._handle_success()
         return ret
 
-    async def before_call(self, func, *args, **kwargs):
+    async def before_call(self, func: Callable, *args, **kwargs):
         """
         Override this method to be notified before a call to the guarded
         operation is attempted.
@@ -96,7 +93,7 @@ class _AioCircuitBreakerState(object):
         """
         pass
 
-    async def on_failure(self, exc):
+    async def on_failure(self, exc: Exception):
         """
         Override this method to be notified when a call to the guarded
         operation fails.
@@ -104,7 +101,7 @@ class _AioCircuitBreakerState(object):
         pass
 
 
-class AioCircuitClosedState(_AioCircuitBreakerState):
+class AioCircuitClosedState(AioCircuitBreakerState):
     """
     In the normal "closed" state, the circuit breaker executes operations as
     usual. If the call succeeds, nothing happens. If it fails, however, the
@@ -113,7 +110,7 @@ class AioCircuitClosedState(_AioCircuitBreakerState):
     and "opens" the circuit.
     """
 
-    def __init__(self, cb, prev_state=None, notify=False):
+    def __init__(self, cb, prev_state: str = None, notify: bool = False):
         """
         Moves the given circuit breaker `cb` to the "closed" state.
         """
@@ -123,13 +120,16 @@ class AioCircuitClosedState(_AioCircuitBreakerState):
             for listener in self._breaker.listeners:
                 listener.state_change(self._breaker, prev_state, self)
 
-    async def _initialize(self):
-        await self._breaker._state_storage.reset_counter()
+    async def _initialize(self, cb, prev_state: str, notify: bool) -> None:
+        if notify:
+            await self._breaker._state_storage.reset_counter()
 
-    async def on_failure(self, exc):
+    async def on_failure(self, exc: Exception) -> None:
         """
         Moves the circuit breaker to the "open" state once the failures
         threshold is reached.
+
+        :raises CircuitBreakerError: If the failure threshold has been reached.
         """
 
         counter = await self._breaker._state_storage.counter
@@ -141,7 +141,7 @@ class AioCircuitClosedState(_AioCircuitBreakerState):
             raise CircuitBreakerError(error_msg)
 
 
-class AioCircuitOpenState(_AioCircuitBreakerState):
+class AioCircuitOpenState(AioCircuitBreakerState):
     """
     When the circuit is "open", calls to the circuit breaker fail immediately,
     without any attempt to execute the real operation. This is indicated by the
@@ -150,7 +150,7 @@ class AioCircuitOpenState(_AioCircuitBreakerState):
     operation has a chance of succeeding, so it goes into the "half-open" state.
     """
 
-    def __init__(self, cb, prev_state=None, notify=False):
+    def __init__(self, cb, prev_state: str = None, notify: bool = False):
         """
         Moves the given circuit breaker `cb` to the "open" state.
         """
@@ -160,14 +160,13 @@ class AioCircuitOpenState(_AioCircuitBreakerState):
             for listener in self._breaker.listeners:
                 listener.state_change(self._breaker, prev_state, self)
 
-    async def _initialize(self):
-        await self._breaker._state_storage.set_opened_at(datetime.utcnow())
-
-    async def before_call(self, func, *args, **kwargs):
+    async def before_call(self, func: Callable, *args, **kwargs) -> Any:
         """
         After the timeout elapses, move the circuit breaker to the "half-open"
         state; otherwise, raises ``CircuitBreakerError`` without any attempt
         to execute the real operation.
+
+        :raises CircuitBreakerError: If timeout has not elapsed.
         """
         timeout = timedelta(seconds=self._breaker.reset_timeout)
         opened_at = await self._breaker._state_storage.opened_at
@@ -178,7 +177,7 @@ class AioCircuitOpenState(_AioCircuitBreakerState):
             await self._breaker.half_open()
             return await self._breaker.call(func, *args, **kwargs)
 
-    async def call(self, func, *args, **kwargs):
+    async def call(self, func: Callable, *args, **kwargs) -> Any:
         """
         Delegate the call to before_call, if the time out is not elapsed it will throw an exception, otherwise we get
         the results from the call performed after the state is switch to half-open
@@ -187,7 +186,7 @@ class AioCircuitOpenState(_AioCircuitBreakerState):
         return await self.before_call(func, *args, **kwargs)
 
 
-class AioCircuitHalfOpenState(_AioCircuitBreakerState):
+class AioCircuitHalfOpenState(AioCircuitBreakerState):
     """
     In the "half-open" state, the next call to the circuit breaker is allowed
     to execute the dangerous operation. Should the call succeed, the circuit
@@ -196,7 +195,7 @@ class AioCircuitHalfOpenState(_AioCircuitBreakerState):
     timeout elapses.
     """
 
-    def __init__(self, cb, prev_state=None, notify=False):
+    def __init__(self, cb, prev_state: str = None, notify: bool = False):
         """
         Moves the given circuit breaker `cb` to the "half-open" state.
         """
@@ -205,14 +204,16 @@ class AioCircuitHalfOpenState(_AioCircuitBreakerState):
             for listener in self._breaker._listeners:
                 listener.state_change(self._breaker, prev_state, self)
 
-    async def on_failure(self, exc):
+    async def on_failure(self, exc: Exception) -> None:
         """
         Opens the circuit breaker.
+
+        :raises CircuitBreakerError: "Trial call failed, circuit breaker opened"
         """
         await self._breaker.open()
         raise CircuitBreakerError("Trial call failed, circuit breaker opened")
 
-    async def on_success(self):
+    async def on_success(self) -> None:
         """
         Closes the circuit breaker.
         """
