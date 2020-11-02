@@ -64,7 +64,7 @@ Features
 --------
 
 -   pybreaker features +
--   aioredis backing
+-   aioredis backed storage option
 
 
 Requirements
@@ -131,9 +131,9 @@ When the circuit is **OPEN**, all calls to :code:`update_customer` will fail imm
 operation.
 
 After 60 seconds, the circuit breaker will allow the next call to
-:code:`update_customer` pass through.  This state is called **HALF OPEN**.
-If that call succeeds, the circuit is **CLOSED**;
-if it fails, however, the circuit is **OPEN**ed again until another timeout elapses.
+:code:`update_customer` pass through.  This state is called **HALF OPEN** .
+If that call succeeds, the circuit is **CLOSED** ;
+if it fails, however, the circuit is **OPEN** ed again until another timeout elapses.
 
 
 Excluding Exceptions(from `pybreaker`_)
@@ -169,6 +169,7 @@ Infuse, when initializing the Insanic application
 Other than this, there are some configurations you can tweak.
 Pretty simple.
 
+For more information, please refer to the `Documentation`_.
 
 Release History
 ===============
@@ -208,3 +209,4 @@ Links
 .. _Git: http://git-scm.com
 .. _pybreaker: https://github.com/danielfm/pybreaker
 .. _Insanic: https://github.com/crazytruth/insanic
+.. _Documentation: https://infuse.readthedocs.io/en/latest/
