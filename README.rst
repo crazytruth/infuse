@@ -1,4 +1,4 @@
-.. image:: https://github.com/crazytruth/infuse/raw/master/docs/source/_static/infuse.png
+.. image:: https://github.com/crazytruth/infuse/raw/master/artworks/infuse200px.png
 
 Infuse
 ======

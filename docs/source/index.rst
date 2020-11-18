@@ -3,6 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+.. image:: https://github.com/crazytruth/infuse/raw/master/artworks/infuse200px.png
+
 .. include:: infuse/foreword.rst
 
 .. toctree::
